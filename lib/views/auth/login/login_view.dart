@@ -42,6 +42,11 @@ class _LoginViewState extends State<LoginView> {
     }
 
     final authProvider = context.read<AuthProvider>();
+    final profileProvider = context.read<ProfileProvider>();
+
+    debugPrint('==============================================');
+    debugPrint('[MealFlow Login] START');
+    debugPrint('[MealFlow Login] email=${_emailController.text.trim()}');
 
     final success = await authProvider.login(
       email: _emailController.text.trim(),
@@ -50,7 +55,11 @@ class _LoginViewState extends State<LoginView> {
 
     if (!mounted) return;
 
+    debugPrint('[MealFlow Login] Auth success=$success');
+
     if (!success) {
+      debugPrint('[MealFlow Login] AUTH ERROR=${authProvider.errorMessage}');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -62,55 +71,103 @@ class _LoginViewState extends State<LoginView> {
       return;
     }
 
-    // ==========================================================
+    // ============================================================
     // LOAD PROFILE
-    // ==========================================================
+    // ============================================================
 
-    final profileProvider = context.read<ProfileProvider>();
+    debugPrint('[MealFlow Login] Loading profile...');
 
     final profileLoaded = await profileProvider.loadProfile();
 
     if (!mounted) return;
 
-    if (!profileLoaded || profileProvider.profile == null) {
+    debugPrint('[MealFlow Login] Profile loaded=$profileLoaded');
+
+    final profile = profileProvider.profile;
+
+    if (!profileLoaded || profile == null) {
+      debugPrint('[MealFlow Login] PROFILE LOAD FAILED');
+      debugPrint('[MealFlow Login] Profile error=${profileProvider.error}');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile not found. Please contact support.'),
+        SnackBar(
+          content: Text(
+            profileProvider.error ?? 'Unable to load your profile.',
+          ),
         ),
       );
 
       return;
     }
 
-    final profile = profileProvider.profile!;
+    // ============================================================
+    // PROFILE DETAILS
+    // ============================================================
 
-    // ==========================================================
-    // CHECK ACCOUNT STATUS
-    // ==========================================================
+    debugPrint('[MealFlow Login] Profile loaded successfully');
+    debugPrint('[MealFlow Login] userId=${profile.id}');
+    debugPrint('[MealFlow Login] role=${profile.role}');
+    debugPrint('[MealFlow Login] status=${profile.status}');
+    debugPrint('[MealFlow Login] isEmployee=${profile.isEmployee}');
+    debugPrint('[MealFlow Login] isVendor=${profile.isVendor}');
+    debugPrint('[MealFlow Login] isActive=${profile.isActive}');
+
+    // ============================================================
+    // ACCOUNT STATUS
+    // ============================================================
 
     if (!profile.isActive) {
+      debugPrint('[MealFlow Login] ACCOUNT NOT ACTIVE');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Your account is not active.')),
+        const SnackBar(
+          content: Text('Your account is not active. Please contact support.'),
+        ),
       );
 
       return;
     }
 
-    // ==========================================================
-    // ROLE BASED NAVIGATION
-    // ==========================================================
+    // ============================================================
+    // EMPLOYEE
+    // ============================================================
 
     if (profile.isEmployee) {
-      Navigator.pushReplacementNamed(context, AppRoutes.employeeHome);
-    } else if (profile.isVendor) {
-      Navigator.pushReplacementNamed(context, AppRoutes.vendorDashboard);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unsupported role: ${profile.role}')),
-      );
-    }
-  }
+      debugPrint('==============================================');
+      debugPrint('[MealFlow Login] EMPLOYEE DETECTED');
+      debugPrint('[MealFlow Login] Navigating to ${AppRoutes.employeeHome}');
+      debugPrint('==============================================');
 
+      Navigator.pushReplacementNamed(context, AppRoutes.employeeHome);
+
+      return;
+    }
+
+    // ============================================================
+    // VENDOR
+    // ============================================================
+
+    if (profile.isVendor) {
+      debugPrint('==============================================');
+      debugPrint('[MealFlow Login] VENDOR DETECTED');
+      debugPrint('[MealFlow Login] Navigating to ${AppRoutes.vendorDashboard}');
+      debugPrint('==============================================');
+
+      Navigator.pushReplacementNamed(context, AppRoutes.vendorDashboard);
+
+      return;
+    }
+
+    // ============================================================
+    // UNKNOWN ROLE
+    // ============================================================
+
+    debugPrint('[MealFlow Login] UNKNOWN ROLE: ${profile.role}');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Unknown account role: ${profile.role}')),
+    );
+  }
   // ============================================================
   // OPEN SIGNUP
   // ============================================================

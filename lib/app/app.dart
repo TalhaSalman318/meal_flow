@@ -1,11 +1,12 @@
 import 'package:canteen_app/views/auth/login/login_view.dart';
-import 'package:canteen_app/views/employee/home/home_view.dart';
+import 'package:canteen_app/views/auth/signup/signup_view.dart';
+import 'package:canteen_app/views/home/empolyee_home_view.dart';
 import 'package:canteen_app/views/vendor/dashboard/vendor_dashboard_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import 'theme/app_theme.dart';
 import 'routes/app_routes.dart';
-
 import '../views/splash/splash_view.dart';
 
 class MealFlowApp extends StatelessWidget {
@@ -22,13 +23,27 @@ class MealFlowApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           title: 'MealFlow',
           theme: AppTheme.lightTheme,
+
           initialRoute: AppRoutes.splash,
+
           routes: {
+            // =====================================================
+            // AUTH
+            // =====================================================
             AppRoutes.splash: (_) => const SplashView(),
 
             AppRoutes.login: (_) => const LoginView(),
-            AppRoutes.employeeHome: (_) => const HomeView(),
 
+            AppRoutes.signup: (_) => const SignupView(),
+
+            // =====================================================
+            // EMPLOYEE
+            // =====================================================
+            AppRoutes.employeeHome: (_) => const EmployeeHomeView(),
+
+            // =====================================================
+            // VENDOR
+            // =====================================================
             AppRoutes.vendorDashboard: (_) => const VendorDashboardView(),
           },
         );

@@ -6,6 +6,7 @@ import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/profile_provider.dart';
 
 class SignupView extends StatefulWidget {
   const SignupView({super.key});
@@ -39,7 +40,6 @@ class _SignupViewState extends State<SignupView> {
   // VENDOR FIELDS
   // ============================================================
 
-  final _vendorCodeController = TextEditingController();
   final _vendorNameController = TextEditingController();
   final _contactPersonController = TextEditingController();
 
@@ -72,7 +72,6 @@ class _SignupViewState extends State<SignupView> {
     _departmentController.dispose();
     _designationController.dispose();
 
-    _vendorCodeController.dispose();
     _vendorNameController.dispose();
     _contactPersonController.dispose();
 
@@ -91,6 +90,7 @@ class _SignupViewState extends State<SignupView> {
     }
 
     final authProvider = context.read<AuthProvider>();
+    final profileProvider = context.read<ProfileProvider>();
 
     final success = await authProvider.signup(
       fullName: _nameController.text.trim(),
@@ -120,13 +120,6 @@ class _SignupViewState extends State<SignupView> {
       // ========================================================
       phone: _phoneController.text.trim(),
 
-      // ========================================================
-      // VENDOR
-      // ========================================================
-      vendorCode: _selectedRole == 'VENDOR'
-          ? _vendorCodeController.text.trim()
-          : null,
-
       vendorName: _selectedRole == 'VENDOR'
           ? _vendorNameController.text.trim()
           : null,
@@ -141,14 +134,57 @@ class _SignupViewState extends State<SignupView> {
     }
 
     if (success) {
+      debugPrint('[Vendor Signup] AUTH/RECORD SETUP SUCCESS');
+      final profileLoaded = await profileProvider.loadProfile();
+
+      if (!mounted) {
+        return;
+      }
+
+      final profile = profileProvider.profile;
+
+      if (!profileLoaded || profile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              profileProvider.error ?? 'Unable to load your profile.',
+            ),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        return;
+      }
+
+      if (!profile.isActive) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Your account was created but is not active yet. Please contact support.',
+            ),
+          ),
+        );
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Account created successfully.')),
       );
 
-      final destination = _selectedRole == 'EMPLOYEE'
+      final destination = profile.isEmployee
           ? AppRoutes.employeeHome
-          : AppRoutes.vendorDashboard;
+          : profile.isVendor
+          ? AppRoutes.vendorDashboard
+          : null;
 
+      if (destination == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Unknown account role: ${profile.role}')),
+        );
+        return;
+      }
+
+      debugPrint('[Vendor Signup] ROLE = ${profile.role}');
+      debugPrint('[Vendor Signup] NAVIGATION ROUTE = $destination');
       Navigator.pushReplacementNamed(context, destination);
     } else {
       final message =
@@ -437,34 +473,6 @@ class _SignupViewState extends State<SignupView> {
                   // VENDOR SECTION
                   // ==================================================
                   if (_selectedRole == 'VENDOR') ...[
-                    _spacing(),
-
-                    // Vendor Code
-                    _fieldLabel('Vendor Code'),
-
-                    _spacing(8),
-
-                    TextFormField(
-                      controller: _vendorCodeController,
-                      textCapitalization: TextCapitalization.characters,
-                      textInputAction: TextInputAction.next,
-                      decoration: _inputDecoration(
-                        hintText: 'e.g. VEN001',
-                        icon: Icons.qr_code_rounded,
-                      ),
-                      validator: (value) {
-                        if (_selectedRole != 'VENDOR') {
-                          return null;
-                        }
-
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Vendor code is required';
-                        }
-
-                        return null;
-                      },
-                    ),
-
                     _spacing(),
 
                     // Vendor Name

@@ -1,12 +1,17 @@
 import 'package:canteen_app/app/routes/app_routes.dart';
 import 'package:canteen_app/core/services/supabase_service.dart';
 import 'package:canteen_app/providers/auth_provider.dart';
+import 'package:canteen_app/providers/employee_provider.dart';
 import 'package:canteen_app/providers/profile_provider.dart';
+import 'package:canteen_app/providers/vendor/vendor_home_provider.dart';
+import 'package:canteen_app/providers/vendor/menu_provider.dart';
 import 'package:canteen_app/views/auth/login/login_view.dart';
 import 'package:canteen_app/views/auth/signup/signup_view.dart';
-import 'package:canteen_app/views/employee/home/home_view.dart';
+import 'package:canteen_app/views/home/empolyee_home_view.dart';
 import 'package:canteen_app/views/splash/splash_view.dart';
 import 'package:canteen_app/views/vendor/dashboard/vendor_dashboard_view.dart';
+import 'package:canteen_app/views/vendor/menus/add_menu_view.dart';
+import 'package:canteen_app/views/vendor/menus/menus_view.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -24,6 +29,9 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
 
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
+        ChangeNotifierProvider(create: (_) => EmployeeProvider()),
+        ChangeNotifierProvider(create: (_) => VendorHomeProvider()),
+        ChangeNotifierProvider(create: (_) => VendorMenuProvider()),
       ],
       child: MyApp(),
     ),
@@ -52,8 +60,10 @@ class MyApp extends StatelessWidget {
             AppRoutes.login: (context) => const LoginView(),
 
             AppRoutes.signup: (context) => const SignupView(),
-            AppRoutes.employeeHome: (context) => const HomeView(),
+            AppRoutes.employeeHome: (context) => const EmployeeHomeView(),
             AppRoutes.vendorDashboard: (context) => const VendorDashboardView(),
+            AppRoutes.vendorMenus: (context) => const VendorMenusView(),
+            AppRoutes.addMenu: (context) => const AddMenuView(),
           },
         );
       },

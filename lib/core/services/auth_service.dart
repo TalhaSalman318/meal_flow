@@ -16,10 +16,19 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    return await _client.auth.signInWithPassword(
+    final response = await _client.auth.signInWithPassword(
       email: email.trim(),
       password: password,
     );
+
+    if (response.user == null || response.session == null) {
+      throw const AuthException(
+        'Login succeeded but no authenticated session is available.',
+        code: 'session_missing',
+      );
+    }
+
+    return response;
   }
 
   // ============================================================
@@ -34,7 +43,6 @@ class AuthService {
     String? department,
     String? designation,
     String? phone,
-    String? vendorCode,
     String? vendorName,
     String? contactPerson,
   }) async {
@@ -165,8 +173,8 @@ class AuthService {
         debugPrint('hint="${error.hint}"');
       }
 
-      throw const AuthException(
-        'Profile creation failed.',
+      throw AuthException(
+        'Profile creation failed: ${error.message}',
         code: 'signup_profile_failed',
       );
     }
@@ -301,8 +309,8 @@ class AuthService {
           debugPrint('==============================================');
         }
 
-        throw const AuthException(
-          'Employee record could not be created.',
+        throw AuthException(
+          'Employee record could not be created: ${error.message}',
           code: 'signup_employee_failed',
         );
       }
@@ -313,10 +321,6 @@ class AuthService {
     // ==========================================================
 
     if (cleanRole == 'VENDOR') {
-      if (vendorCode == null || vendorCode.trim().isEmpty) {
-        throw const AuthException('Vendor code is required.');
-      }
-
       if (vendorName == null || vendorName.trim().isEmpty) {
         throw const AuthException('Vendor name is required.');
       }
@@ -333,7 +337,6 @@ class AuthService {
               .from('vendors')
               .insert({
                 'profile_id': user.id,
-                'vendor_code': vendorCode.trim(),
                 'vendor_name': vendorName.trim(),
                 'contact_person': _nullableText(contactPerson),
                 'phone': _nullableText(phone),
@@ -388,8 +391,8 @@ class AuthService {
           debugPrint('==============================================');
         }
 
-        throw const AuthException(
-          'Vendor record could not be created.',
+        throw AuthException(
+          'Vendor record could not be created: ${error.message}',
           code: 'signup_vendor_failed',
         );
       }

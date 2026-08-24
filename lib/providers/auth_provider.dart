@@ -18,10 +18,7 @@ class AuthProvider extends ChangeNotifier {
   // LOGIN
   // ============================================================
 
-  Future<bool> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<bool> login({required String email, required String password}) async {
     if (_isLoading) {
       return false;
     }
@@ -30,10 +27,7 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
 
     try {
-      await AuthService.signIn(
-        email: email,
-        password: password,
-      );
+      await AuthService.signIn(email: email, password: password);
 
       _setLoading(false);
       return true;
@@ -59,7 +53,6 @@ class AuthProvider extends ChangeNotifier {
 
     String? phone,
 
-    String? vendorCode,
     String? vendorName,
     String? contactPerson,
   }) async {
@@ -79,7 +72,6 @@ class AuthProvider extends ChangeNotifier {
         department: department,
         designation: designation,
         phone: phone,
-        vendorCode: vendorCode,
         vendorName: vendorName,
         contactPerson: contactPerson,
       );
@@ -156,25 +148,18 @@ class AuthProvider extends ChangeNotifier {
       }
 
       if (code == 'signup_profile_failed') {
-        return 'Account was created, but the profile could not be created. '
-            'Check Supabase permissions.';
+        return message;
       }
 
       if (code == 'signup_employee_failed') {
-        return 'Account was created, but the employee record could not be created. '
-            'Check employees table permissions/trigger.';
+        return message;
       }
 
       if (code == 'signup_vendor_failed') {
-        return 'Account was created, but the vendor record could not be created. '
-            'Check vendors table permissions.';
+        return message;
       }
 
-      return _withSupabaseDetails(
-        message,
-        error.statusCode,
-        error.code,
-      );
+      return _withSupabaseDetails(message, error.statusCode, error.code);
     }
 
     if (error is PostgrestException) {
@@ -213,11 +198,7 @@ class AuthProvider extends ChangeNotifier {
             'Check the employees table columns/defaults.';
       }
 
-      return _withSupabaseDetails(
-        message,
-        null,
-        error.code,
-      );
+      return _withSupabaseDetails(message, null, error.code);
     }
 
     if (error is TimeoutException) {
