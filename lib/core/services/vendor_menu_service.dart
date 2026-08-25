@@ -27,6 +27,24 @@ class VendorMenuService {
         .order('menu_date', ascending: false);
   }
 
+  static Future<List<Map<String, dynamic>>> getMenusForMonth(
+    DateTime month,
+  ) async {
+    final userId = _currentUserId;
+    final firstDay = DateTime(month.year, month.month, 1);
+    final nextMonth = DateTime(month.year, month.month + 1, 1);
+    final result = await _client
+        .from('menus')
+        .select(
+          'id, menu_date, title, description, image_url, created_by, created_at, updated_at',
+        )
+        .eq('created_by', userId)
+        .gte('menu_date', _dateOnly(firstDay))
+        .lt('menu_date', _dateOnly(nextMonth))
+        .order('menu_date', ascending: true);
+    return (result as List).cast<Map<String, dynamic>>();
+  }
+
   static Future<List<Map<String, dynamic>>> getMenus() => getMyMenus();
 
   static Future<Map<String, dynamic>?> getTodaysMenu() async {

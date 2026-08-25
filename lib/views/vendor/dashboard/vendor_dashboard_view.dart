@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../models/menu_model.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../providers/vendor/vendor_home_provider.dart';
 
 class VendorDashboardView extends StatefulWidget {
@@ -93,6 +94,8 @@ class _DashboardContent extends StatelessWidget {
                     ),
                     SizedBox(height: 14.h),
                     _TodayMenuCard(menu: provider.todaysMenu),
+                    SizedBox(height: 14.h),
+                    _GenerateMealsButton(provider: provider),
                     SizedBox(height: 28.h),
                     const _SectionTitle(
                       title: 'Quick actions',
@@ -100,6 +103,8 @@ class _DashboardContent extends StatelessWidget {
                     ),
                     SizedBox(height: 14.h),
                     const _QuickActions(),
+                    SizedBox(height: 20.h),
+                    const _SignOutButton(),
                   ],
                 ),
               ),
@@ -108,6 +113,99 @@ class _DashboardContent extends StatelessWidget {
         },
       ),
     );
+  }
+}
+
+class _GenerateMealsButton extends StatelessWidget {
+  final VendorHomeProvider provider;
+
+  const _GenerateMealsButton({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: provider.isGeneratingMeals
+            ? null
+            : () => _generateMeals(context),
+        icon: provider.isGeneratingMeals
+            ? SizedBox(
+                width: 18.w,
+                height: 18.w,
+                child: const CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.restaurant_rounded),
+        label: Text(
+          provider.isGeneratingMeals
+              ? 'Generating Today\'s Meals...'
+              : 'Generate Today\'s Meals',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _generateMeals(BuildContext context) async {
+    final result = await provider.generateTodaysMeals();
+    if (!context.mounted) return;
+
+    final message = result == null
+        ? (provider.mealGenerationError ?? 'Unable to generate today\'s meals.')
+        : "Today's meals generated successfully\n"
+              'Meals: ${result['generated_meals'] ?? 0}, '
+              'Charges: ${result['generated_charges'] ?? 0}';
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _SignOutButton extends StatelessWidget {
+  const _SignOutButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => _confirmSignOut(context),
+        icon: const Icon(Icons.logout_rounded),
+        label: const Text('Sign Out'),
+      ),
+    );
+  }
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Sign Out?'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted || confirmed != true) return;
+
+    try {
+      await context.read<AuthProvider>().logout();
+      if (!context.mounted) return;
+      context.read<VendorHomeProvider>().clearData();
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to sign out. Please try again.')),
+      );
+    }
   }
 }
 
@@ -392,8 +490,8 @@ class _QuickActions extends StatelessWidget {
         final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
         final actions = [
           (Icons.restaurant_menu_rounded, 'Manage Menu', true),
-          (Icons.restaurant_outlined, 'View Meals', false),
-          (Icons.group_outlined, 'Guest Meals', false),
+          (Icons.restaurant_outlined, 'View Meals', true),
+          (Icons.group_outlined, 'Guest Meals', true),
           (Icons.person_outline_rounded, 'Profile', false),
         ];
 
@@ -406,8 +504,12 @@ class _QuickActions extends StatelessWidget {
                 width: width,
                 icon: action.$1,
                 label: action.$2,
-                onPressed: action.$3
+                onPressed: action.$2 == 'Manage Menu'
                     ? () => Navigator.pushNamed(context, AppRoutes.vendorMenus)
+                    : action.$2 == 'View Meals'
+                    ? () => Navigator.pushNamed(context, AppRoutes.vendorMeals)
+                    : action.$2 == 'Guest Meals'
+                    ? () => Navigator.pushNamed(context, AppRoutes.vendorMeals)
                     : () => _showUnavailable(context),
               ),
           ],

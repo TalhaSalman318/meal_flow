@@ -8,8 +8,10 @@ class AppRoutes {
   // Employee
   static const String employeeHome = '/employee/home';
   static const String meals = '/employee/meals';
+  static const String mealHistory = '/employee/meal-history';
   static const String calendar = '/employee/calendar';
   static const String guestMeal = '/employee/guest-meal';
+  static const String employeeMenus = '/employee/menus';
   static const String ledger = '/employee/ledger';
   static const String profile = '/employee/profile';
 

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'supabase_service.dart';
@@ -42,5 +43,125 @@ class VendorService {
         .select('id, email, full_name, role, status')
         .eq('id', user.id)
         .maybeSingle();
+  }
+
+  static Future<Map<String, dynamic>> generateMealsForDate(
+    DateTime date,
+  ) async {
+    final mealDate =
+        '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
+
+    if (kDebugMode) {
+      debugPrint('[Vendor Meal Generation] START date=$mealDate');
+    }
+
+    try {
+      final result = await _client.rpc(
+        'generate_meals_for_date',
+        params: {'p_meal_date': mealDate},
+      );
+      final data = result is List && result.isNotEmpty ? result.first : result;
+      final response = data is Map
+          ? Map<String, dynamic>.from(data)
+          : <String, dynamic>{};
+
+      if (kDebugMode) {
+        debugPrint('[Vendor Meal Generation] RESULT: $response');
+      }
+      return response;
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[Vendor Meal Generation] ERROR: $error');
+      }
+      rethrow;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> loadTodaysMeals() async {
+    if (kDebugMode) {
+      debugPrint('[Vendor Meals] LOAD START');
+    }
+
+    try {
+      final today = DateTime.now();
+      final date = _dateOnly(today);
+      final result = await _client
+          .from('meal_records')
+          .select('''
+            id,
+            employee_id,
+            meal_date,
+            meal_type,
+            status,
+            rate,
+            cancelled_at,
+            served_at,
+            updated_by,
+            created_at,
+            updated_at
+          ''')
+          .eq('meal_date', date)
+          .order('employee_id', ascending: true)
+          .order('created_at', ascending: true);
+
+      if (kDebugMode) {
+        debugPrint('[Vendor Meals] RESULT: $result');
+      }
+      return (result as List).cast<Map<String, dynamic>>();
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[Vendor Meals] ERROR: $error');
+      }
+      rethrow;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> loadTodaysGuestMeals() async {
+    if (kDebugMode) debugPrint('[Vendor Guest Meals] LOAD START');
+    try {
+      final result = await _client.rpc('get_today_guest_meals_for_vendor');
+      final rows = result is List ? result : <dynamic>[result];
+      final meals = rows
+          .whereType<Map>()
+          .map((row) => Map<String, dynamic>.from(row))
+          .toList();
+      if (kDebugMode) debugPrint('[Vendor Guest Meals] RESULT: $meals');
+      return meals;
+    } catch (error) {
+      if (kDebugMode) debugPrint('[Vendor Guest Meals] ERROR: $error');
+      rethrow;
+    }
+  }
+
+  static Future<Map<String, dynamic>> markMealServed(String mealId) async {
+    if (kDebugMode) {
+      debugPrint('[Vendor Meals] SERVE START mealId=$mealId');
+    }
+
+    try {
+      final result = await _client.rpc(
+        'vendor_mark_meal_served',
+        params: {'p_meal_id': mealId},
+      );
+      final data = result is List && result.isNotEmpty ? result.first : result;
+      final response = Map<String, dynamic>.from(data as Map);
+      if (kDebugMode) {
+        debugPrint('[Vendor Meals] SERVE SUCCESS: $response');
+      }
+      return response;
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[Vendor Meals] ERROR: $error');
+      }
+      rethrow;
+    }
+  }
+
+  static String _dateOnly(DateTime date) {
+    return '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}';
   }
 }

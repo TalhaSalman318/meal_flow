@@ -11,7 +11,6 @@ import 'edit_menu_view.dart';
 
 class VendorMenusView extends StatefulWidget {
   const VendorMenusView({super.key});
-
   @override
   State<VendorMenusView> createState() => _VendorMenusViewState();
 }
@@ -72,6 +71,9 @@ class _VendorMenusViewState extends State<VendorMenusView> {
 
   Widget _menuSections(VendorMenuProvider provider) {
     final today = _dateOnly(DateTime.now());
+    final month = provider.selectedMonth;
+    final isCurrentMonth =
+        month.year == today.year && month.month == today.month;
     final todayMenus = provider.menus
         .where((menu) => _dateOnly(menu.menuDate) == today)
         .toList();
@@ -92,12 +94,45 @@ class _VendorMenusViewState extends State<VendorMenusView> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(20.w, 8.h, 20.w, 100.h),
         children: [
-          _section('Today\'s Menu', todayMenus, showAddAction: true),
-          if (upcoming.isNotEmpty) ...[
+          Row(
+            children: [
+              IconButton(
+                onPressed: provider.isLoading
+                    ? null
+                    : () => provider.changeMonth(-1),
+                icon: const Icon(Icons.chevron_left),
+                tooltip: 'Previous month',
+              ),
+              Expanded(
+                child: Text(
+                  '${_monthName(month.month)} ${month.year}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: provider.isLoading
+                    ? null
+                    : () => provider.changeMonth(1),
+                icon: const Icon(Icons.chevron_right),
+                tooltip: 'Next month',
+              ),
+            ],
+          ),
+          _section(
+            isCurrentMonth ? 'Today\'s Menu' : 'Menus This Month',
+            isCurrentMonth ? todayMenus : provider.menus,
+            showAddAction: isCurrentMonth,
+          ),
+          if (isCurrentMonth && upcoming.isNotEmpty) ...[
             SizedBox(height: 24.h),
             _section('Upcoming Menus', upcoming),
           ],
-          if (past.isNotEmpty) ...[
+          if (isCurrentMonth && past.isNotEmpty) ...[
             SizedBox(height: 24.h),
             _section('Past Menus', past),
           ],
@@ -105,6 +140,21 @@ class _VendorMenusViewState extends State<VendorMenusView> {
       ),
     );
   }
+
+  static String _monthName(int month) => const [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ][month - 1];
 
   Widget _section(
     String title,
