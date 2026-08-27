@@ -92,6 +92,10 @@ class VendorService {
           .select('''
             id,
             employee_id,
+            employees(
+              employee_code,
+              profiles(full_name)
+            ),
             meal_date,
             meal_type,
             status,
@@ -109,7 +113,7 @@ class VendorService {
       if (kDebugMode) {
         debugPrint('[Vendor Meals] RESULT: $result');
       }
-      return (result as List).cast<Map<String, dynamic>>();
+      return (result as List).map(_withEmployeeIdentity).toList();
     } catch (error) {
       if (kDebugMode) {
         debugPrint('[Vendor Meals] ERROR: $error');
@@ -133,6 +137,37 @@ class VendorService {
       if (kDebugMode) debugPrint('[Vendor Guest Meals] ERROR: $error');
       rethrow;
     }
+  }
+
+  static Map<String, dynamic> _withEmployeeIdentity(dynamic row) {
+    final meal = Map<String, dynamic>.from(row as Map);
+    final employee = meal.remove('employees');
+    if (employee is Map) {
+      final employeeData = Map<String, dynamic>.from(employee);
+      final profile = employeeData['profiles'];
+      final profileData = profile is Map
+          ? Map<String, dynamic>.from(profile)
+          : const <String, dynamic>{};
+      meal['employee_code'] = employeeData['employee_code'];
+      meal['employee_name'] = profileData['full_name'];
+    }
+    return meal;
+  }
+
+  static Future<int> loadActiveEmployeeCount() async {
+    final today = _dateOnly(DateTime.now());
+    final result = await _client
+        .from('subscriptions')
+        .select('employee_id, employees!inner(status)')
+        .eq('status', 'ACTIVE')
+        .eq('employees.status', 'ACTIVE')
+        .lte('start_date', today)
+        .gte('end_date', today);
+    final employeeIds = (result as List)
+        .map((row) => (row as Map)['employee_id'])
+        .whereType<String>()
+        .toSet();
+    return employeeIds.length;
   }
 
   static Future<Map<String, dynamic>> markMealServed(String mealId) async {

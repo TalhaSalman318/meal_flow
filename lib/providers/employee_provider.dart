@@ -307,6 +307,9 @@ class EmployeeProvider extends ChangeNotifier {
     if (lowerMessage.contains('no meal')) {
       return 'No meal is scheduled for today.';
     }
+    if (lowerMessage.contains('cancellation window has closed')) {
+      return 'Meal cancellation closed after 1:00 PM.';
+    }
     if (error is PostgrestException && error.code == '42501') {
       return 'You do not have permission to cancel this meal.';
     }

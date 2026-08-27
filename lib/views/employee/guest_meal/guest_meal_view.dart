@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
+import '../../../core/widgets/loading_widget.dart';
 import '../../../models/guest_meal_model.dart';
 import '../../../providers/employee_provider.dart';
 
@@ -73,7 +74,7 @@ class _GuestMealViewState extends State<GuestMealView> {
                 ),
                 SizedBox(height: 20.h),
                 if (provider.isLoadingGuestMeals)
-                  const LinearProgressIndicator(),
+                  const SizedBox(height: 360, child: DataSkeleton(count: 3)),
                 if (provider.guestMealError != null)
                   _message(provider.guestMealError!),
                 if (!provider.isLoadingGuestMeals &&

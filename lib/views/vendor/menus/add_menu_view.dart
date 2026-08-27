@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
+import '../../../core/services/menu_image_service.dart';
 import '../../../providers/vendor/menu_provider.dart';
 import 'edit_menu_view.dart';
 
@@ -19,6 +21,7 @@ class _AddMenuViewState extends State<AddMenuView> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _imageUrlController = TextEditingController();
+  XFile? _selectedImage;
   DateTime? _menuDate;
 
   @override
@@ -65,6 +68,8 @@ class _AddMenuViewState extends State<AddMenuView> {
                     labelText: 'Image URL (optional)',
                   ),
                 ),
+                SizedBox(height: 16.h),
+                _imagePicker(),
                 SizedBox(height: 28.h),
                 FilledButton.icon(
                   onPressed: provider.isSaving ? null : _save,
@@ -83,6 +88,44 @@ class _AddMenuViewState extends State<AddMenuView> {
         ),
       ),
     );
+  }
+
+  Widget _imagePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _pickImage,
+          icon: const Icon(Icons.image_outlined),
+          label: Text(
+            _selectedImage == null ? 'Choose Image' : 'Replace Image',
+          ),
+        ),
+        if (_selectedImage != null) ...[
+          SizedBox(height: 10.h),
+          FutureBuilder(
+            future: _selectedImage!.readAsBytes(),
+            builder: (context, snapshot) => snapshot.hasData
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(14.r),
+                    child: Image.memory(
+                      snapshot.data!,
+                      height: 170.h,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                : const SizedBox(height: 170),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _pickImage() async {
+    final image = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (!mounted || image == null) return;
+    setState(() => _selectedImage = image);
   }
 
   Widget _dateField() {
@@ -116,11 +159,26 @@ class _AddMenuViewState extends State<AddMenuView> {
       return;
     }
 
+    String? imageUrl = _imageUrlController.text;
+    if (_selectedImage != null) {
+      try {
+        imageUrl = await MenuImageService.upload(_selectedImage!);
+      } on FormatException catch (error) {
+        _showImageError(error.message);
+        return;
+      } catch (_) {
+        _showImageError(
+          'Image upload failed. Check your connection and try again.',
+        );
+        return;
+      }
+    }
+
     final success = await context.read<VendorMenuProvider>().createMenu(
       menuDate: _menuDate!,
       title: _titleController.text,
       description: _descriptionController.text,
-      imageUrl: _imageUrlController.text,
+      imageUrl: imageUrl,
     );
     if (!mounted) return;
 
@@ -161,6 +219,13 @@ class _AddMenuViewState extends State<AddMenuView> {
         ),
       );
     }
+  }
+
+  void _showImageError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   static String _dateLabel(DateTime date) =>

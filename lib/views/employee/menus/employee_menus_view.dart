@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
+import '../../../core/widgets/loading_widget.dart';
+import '../../../core/widgets/menu_image.dart';
 import '../../../models/menu_model.dart';
 import '../../../providers/employee_provider.dart';
 
@@ -42,7 +44,8 @@ class _EmployeeMenusViewState extends State<EmployeeMenusView> {
               children: [
                 _monthHeader(provider),
                 SizedBox(height: 16.h),
-                if (provider.isMenuLoading) const LinearProgressIndicator(),
+                if (provider.isMenuLoading)
+                  const SizedBox(height: 360, child: DataSkeleton(count: 3)),
                 if (provider.menuError != null) _message(provider.menuError!),
                 if (!provider.isMenuLoading &&
                     provider.menuError == null &&
@@ -134,13 +137,8 @@ class _EmployeeMenusViewState extends State<EmployeeMenusView> {
               style: TextStyle(color: AppColors.textSecondary),
             ),
           ],
-          if (menu.imageUrl != null && menu.imageUrl!.isNotEmpty) ...[
-            SizedBox(height: 10.h),
-            Text(
-              menu.imageUrl!,
-              style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
-            ),
-          ],
+          SizedBox(height: 10.h),
+          MenuImage(url: menu.imageUrl, height: 150.h),
         ],
       ),
     );

@@ -24,6 +24,7 @@ class VendorHomeProvider extends ChangeNotifier {
   List<GuestMealModel> _todaysGuestMeals = [];
   bool _isLoadingGuestMeals = false;
   String? _guestMealError;
+  int? _activeEmployeeCount;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -46,6 +47,10 @@ class VendorHomeProvider extends ChangeNotifier {
       List.unmodifiable(_todaysGuestMeals);
   bool get isLoadingGuestMeals => _isLoadingGuestMeals;
   String? get guestMealError => _guestMealError;
+  int? get activeEmployeeCount => _activeEmployeeCount;
+  double get todaysRevenue =>
+      _todaysMeals.fold<double>(0, (total, meal) => total + meal.rate) +
+      _todaysGuestMeals.fold<double>(0, (total, meal) => total + meal.amount);
 
   int _countStatus(String status) =>
       _todaysMeals.where((meal) => meal.status == status).length;
@@ -93,6 +98,11 @@ class VendorHomeProvider extends ChangeNotifier {
           _todaysMenu = todaysMenuData == null
               ? null
               : MenuModel.fromMap(todaysMenuData);
+          await Future.wait([
+            loadTodaysMeals(),
+            loadTodaysGuestMeals(),
+            _loadActiveEmployeeCount(),
+          ]);
           _isLoading = false;
           notifyListeners();
           return true;
@@ -111,6 +121,17 @@ class VendorHomeProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
     return false;
+  }
+
+  Future<void> _loadActiveEmployeeCount() async {
+    try {
+      _activeEmployeeCount = await VendorService.loadActiveEmployeeCount();
+    } catch (error) {
+      _activeEmployeeCount = null;
+      if (kDebugMode) {
+        debugPrint('[Vendor Dashboard] ACTIVE EMPLOYEE COUNT ERROR: $error');
+      }
+    }
   }
 
   Future<Map<String, dynamic>?> generateTodaysMeals() async {
@@ -236,6 +257,7 @@ class VendorHomeProvider extends ChangeNotifier {
     _mealError = null;
     _todaysGuestMeals = [];
     _guestMealError = null;
+    _activeEmployeeCount = null;
     _errorMessage = null;
     notifyListeners();
   }

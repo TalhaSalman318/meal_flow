@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -5,8 +7,10 @@ import 'package:provider/provider.dart';
 import '../../app/routes/app_routes.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_gradients.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/employee_provider.dart';
+import '../../core/widgets/loading_widget.dart';
+import '../../core/widgets/menu_image.dart';
+import '../../core/widgets/profile_avatar.dart';
 
 class EmployeeHomeView extends StatefulWidget {
   const EmployeeHomeView({super.key});
@@ -16,14 +20,66 @@ class EmployeeHomeView extends StatefulWidget {
 }
 
 class _EmployeeHomeViewState extends State<EmployeeHomeView> {
+  static const int _cancellationCutoffHour = 13;
+  Timer? _cancellationCutoffTimer;
+  bool _canCancelToday = true;
+  Duration _cancellationTimeRemaining = Duration.zero;
+
   @override
   void initState() {
     super.initState();
+    _updateCancellationAvailability();
+    _cancellationCutoffTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _updateCancellationAvailability(),
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<EmployeeProvider>().loadEmployeeData();
     });
+  }
+
+  @override
+  void dispose() {
+    _cancellationCutoffTimer?.cancel();
+    super.dispose();
+  }
+
+  void _updateCancellationAvailability() {
+    final karachiNow = DateTime.now().toUtc().add(const Duration(hours: 5));
+    final cutoff = DateTime.utc(
+      karachiNow.year,
+      karachiNow.month,
+      karachiNow.day,
+      _cancellationCutoffHour,
+    );
+    final remaining = cutoff.difference(karachiNow);
+    final canCancel = remaining > Duration.zero;
+    if (!mounted) {
+      _canCancelToday = canCancel;
+      _cancellationTimeRemaining = canCancel ? remaining : Duration.zero;
+    } else if (canCancel != _canCancelToday) {
+      setState(() {
+        _canCancelToday = canCancel;
+        _cancellationTimeRemaining = canCancel ? remaining : Duration.zero;
+      });
+    } else {
+      setState(() {
+        _cancellationTimeRemaining = canCancel ? remaining : Duration.zero;
+      });
+    }
+  }
+
+  String _cancellationCountdown() {
+    final hours = _cancellationTimeRemaining.inHours.toString().padLeft(2, '0');
+    final minutes = (_cancellationTimeRemaining.inMinutes % 60)
+        .toString()
+        .padLeft(2, '0');
+    final seconds = (_cancellationTimeRemaining.inSeconds % 60)
+        .toString()
+        .padLeft(2, '0');
+    return '${hours}h ${minutes}m ${seconds}s';
   }
 
   @override
@@ -39,7 +95,7 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
           child:
               provider.isLoading ||
                   (!provider.hasData && provider.errorMessage == null)
-              ? const Center(child: CircularProgressIndicator())
+              ? const DataSkeleton()
               : provider.errorMessage != null
               ? _buildError(provider)
               : _buildHome(provider),
@@ -69,20 +125,40 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
             // ==================================================
             // HEADER
             // ==================================================
-            Text(
-              'Good Morning 👋',
-              style: TextStyle(fontSize: 15.sp, color: AppColors.textSecondary),
-            ),
-
-            SizedBox(height: 5.h),
-
-            Text(
-              profile.fullName,
-              style: TextStyle(
-                fontSize: 28.sp,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Good Morning',
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 5.h),
+                      Text(
+                        profile.fullName,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 28.sp,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                ProfileAvatar(
+                  profile: profile,
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+                ),
+              ],
             ),
 
             SizedBox(height: 5.h),
@@ -131,26 +207,27 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
 
             SizedBox(height: 20.h),
 
-            _signOutButton(),
-
-            SizedBox(height: 20.h),
-
             // ==================================================
             // QUICK INFO
             // ==================================================
-            Row(
-              children: [
-                Expanded(child: _subscriptionCard(provider)),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: _infoCard(
-                    title: 'Balance',
-                    value: 'Rs. 0',
-                    icon: Icons.account_balance_wallet_outlined,
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: _subscriptionSummaryCard(provider)),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: _infoCard(
+                      title: 'Balance',
+                      value: 'Rs. 0',
+                      icon: Icons.account_balance_wallet_outlined,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+            SizedBox(height: 8.h),
+            _subscriptionActions(provider),
 
             SizedBox(height: 30.h),
           ],
@@ -317,50 +394,6 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
     );
   }
 
-  Widget _signOutButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: _confirmSignOut,
-        icon: const Icon(Icons.logout_rounded),
-        label: const Text('Sign Out'),
-      ),
-    );
-  }
-
-  Future<void> _confirmSignOut() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Sign Out?'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
-    if (!mounted || confirmed != true) return;
-
-    try {
-      await context.read<AuthProvider>().logout();
-      if (!mounted) return;
-      context.read<EmployeeProvider>().clearData();
-      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to sign out. Please try again.')),
-      );
-    }
-  }
-
   // ============================================================
   // EMPLOYEE CARD
   // ============================================================
@@ -472,6 +505,10 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (menu != null) ...[
+            MenuImage(url: menu['image_url'] as String?, height: 170.h),
+            SizedBox(height: 14.h),
+          ],
           Row(
             children: [
               Container(
@@ -529,7 +566,32 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
               padding: EdgeInsets.only(top: 12.h),
               child: const LinearProgressIndicator(),
             ),
-          if (meal?.status == 'PLANNED')
+          if (meal?.status == 'PLANNED' && _canCancelToday)
+            Padding(
+              padding: EdgeInsets.only(top: 12.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Cancel meal until 1:00 PM',
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  SizedBox(height: 3.h),
+                  Text(
+                    _cancellationCountdown(),
+                    style: TextStyle(
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.error,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (meal?.status == 'PLANNED' && _canCancelToday)
             Padding(
               padding: EdgeInsets.only(top: 12.h),
               child: SizedBox(
@@ -546,8 +608,26 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Icon(Icons.cancel_outlined),
+                      : const Icon(
+                          Icons.cancel_outlined,
+                          color: AppColors.error,
+                        ),
                   label: const Text('Cancel Meal'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: const BorderSide(color: AppColors.error),
+                  ),
+                ),
+              ),
+            ),
+          if (meal?.status == 'PLANNED' && !_canCancelToday)
+            Padding(
+              padding: EdgeInsets.only(top: 12.h),
+              child: Text(
+                'Meal cancellation is closed after 1 PM.',
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: AppColors.textSecondary,
                 ),
               ),
             ),
@@ -582,6 +662,10 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Cancel Meal'),
           ),
         ],
@@ -615,7 +699,71 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
   // INFO CARD
   // ============================================================
 
-  Widget _subscriptionCard(EmployeeProvider provider) {
+  Widget _subscriptionSummaryCard(EmployeeProvider provider) {
+    final status = provider.subscriptionStatus;
+    return Container(
+      padding: EdgeInsets.all(16.w),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(20.r),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.autorenew_rounded,
+                size: 24.sp,
+                color: AppColors.primary,
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Text(
+                  'Subscription',
+                  style: TextStyle(
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              _statusBadge(status),
+            ],
+          ),
+          SizedBox(height: 16.h),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  status == 'ACTIVE' || status == 'PAUSED'
+                      ? 'Daily rate'
+                      : 'Plan status',
+                  style: TextStyle(
+                    fontSize: 12.sp,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              Text(
+                provider.subscription == null
+                    ? status
+                    : 'Rs. ${provider.subscription!.dailyRate.toStringAsFixed(0)}',
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _subscriptionActions(EmployeeProvider provider) {
     final status = provider.subscriptionStatus;
     final canPause = status == 'ACTIVE';
     final canResume = status == 'PAUSED';
@@ -628,11 +776,6 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _infoCard(
-          title: 'Subscription',
-          value: status,
-          icon: Icons.autorenew_rounded,
-        ),
         if (canActivate)
           _subscriptionButton(
             label: 'Activate Subscription',
@@ -665,6 +808,31 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
     );
   }
 
+  Widget _statusBadge(String status) {
+    final color = status == 'CANCELLED' || status == 'EXPIRED'
+        ? AppColors.error
+        : status == 'PAUSED'
+        ? AppColors.paused
+        : status == 'ACTIVE'
+        ? AppColors.success
+        : AppColors.textMuted;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(20.r),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          fontSize: 10.sp,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
+    );
+  }
+
   Widget _subscriptionButton({
     required String label,
     required VoidCallback onPressed,
@@ -674,6 +842,20 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
       padding: EdgeInsets.only(top: 8.h),
       child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: label.contains('Cancel')
+              ? AppColors.error
+              : label.contains('Pause')
+              ? AppColors.paused
+              : AppColors.primary,
+          side: BorderSide(
+            color: label.contains('Cancel')
+                ? AppColors.error
+                : label.contains('Pause')
+                ? AppColors.paused
+                : AppColors.primary,
+          ),
+        ),
         child: isLoading
             ? SizedBox(
                 width: 16.w,
@@ -724,6 +906,10 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Yes'),
           ),
         ],

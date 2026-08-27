@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
+import '../../../core/widgets/loading_widget.dart';
+import '../../../core/widgets/page_header.dart';
 import '../../../models/meal_record_model.dart';
 import '../../../models/guest_meal_model.dart';
 import '../../../providers/vendor/vendor_home_provider.dart';
@@ -42,51 +44,61 @@ class _VendorMealsViewState extends State<VendorMealsView> {
     final provider = context.watch<VendorHomeProvider>();
     final meals = provider.todaysMeals.where(_matches).toList();
     return Scaffold(
-      appBar: AppBar(title: const Text("Today's Meals")),
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.background),
         child: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: provider.refreshTodaysMeals,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.all(20.w),
-              children: [
-                Text(
-                  _dateLabel(DateTime.now()),
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    color: AppColors.textSecondary,
+          child: Column(
+            children: [
+              const PageHeader(title: "Today's Meals"),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: provider.refreshTodaysMeals,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(20.w),
+                    children: [
+                      Text(
+                        _dateLabel(DateTime.now()),
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 16.h),
+                      _stats(provider),
+                      SizedBox(height: 16.h),
+                      TextField(
+                        controller: _searchController,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.search),
+                          hintText: 'Search employee',
+                        ),
+                      ),
+                      SizedBox(height: 10.h),
+                      _filters(),
+                      SizedBox(height: 16.h),
+                      if (provider.isLoadingMeals)
+                        const SizedBox(
+                          height: 360,
+                          child: DataSkeleton(count: 3),
+                        ),
+                      if (provider.mealError != null)
+                        _message(provider.mealError!, Icons.error_outline),
+                      if (!provider.isLoadingMeals &&
+                          provider.mealError == null &&
+                          meals.isEmpty)
+                        _message(
+                          "No meals generated for today.\nGenerate today's meals from the dashboard.",
+                          Icons.restaurant_outlined,
+                        ),
+                      for (final meal in meals) _mealCard(provider, meal),
+                      SizedBox(height: 16.h),
+                      _guestMealsSection(provider),
+                    ],
                   ),
                 ),
-                SizedBox(height: 16.h),
-                _stats(provider),
-                SizedBox(height: 16.h),
-                TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: 'Search employee',
-                  ),
-                ),
-                SizedBox(height: 10.h),
-                _filters(),
-                SizedBox(height: 16.h),
-                if (provider.isLoadingMeals) const LinearProgressIndicator(),
-                if (provider.mealError != null)
-                  _message(provider.mealError!, Icons.error_outline),
-                if (!provider.isLoadingMeals &&
-                    provider.mealError == null &&
-                    meals.isEmpty)
-                  _message(
-                    "No meals generated for today.\nGenerate today's meals from the dashboard.",
-                    Icons.restaurant_outlined,
-                  ),
-                for (final meal in meals) _mealCard(provider, meal),
-                SizedBox(height: 16.h),
-                _guestMealsSection(provider),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -111,7 +123,8 @@ class _VendorMealsViewState extends State<VendorMealsView> {
           ),
         ),
         SizedBox(height: 8.h),
-        if (provider.isLoadingGuestMeals) const LinearProgressIndicator(),
+        if (provider.isLoadingGuestMeals)
+          const SizedBox(height: 360, child: DataSkeleton(count: 3)),
         if (provider.guestMealError != null)
           _message(provider.guestMealError!, Icons.error_outline),
         for (final meal in provider.todaysGuestMeals) _guestMealCard(meal),
@@ -141,8 +154,26 @@ class _VendorMealsViewState extends State<VendorMealsView> {
             style: TextStyle(fontSize: 13.sp, color: AppColors.textSecondary),
           ),
           Text(
-            'Employee: ${meal.employeeName ?? meal.employeeCode ?? meal.employeeId}',
+            'Employee',
             style: TextStyle(fontSize: 12.sp, color: AppColors.textSecondary),
+          ),
+          Text(
+            meal.employeeName?.trim().isNotEmpty == true
+                ? meal.employeeName!
+                : 'Employee',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          Text(
+            meal.employeeCode?.trim().isNotEmpty == true
+                ? meal.employeeCode!
+                : 'Code unavailable',
+            style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
           ),
           Text(
             'Rs. ${meal.amount.toStringAsFixed(0)}  |  ${meal.mealDate}',
@@ -165,9 +196,8 @@ class _VendorMealsViewState extends State<VendorMealsView> {
 
   bool _matches(MealRecordModel meal) {
     final query = _searchController.text.trim().toLowerCase();
-    final searchable =
-        '${meal.employeeName ?? ''} ${meal.employeeCode ?? ''} ${meal.employeeId}'
-            .toLowerCase();
+    final searchable = '${meal.employeeName ?? ''} ${meal.employeeCode ?? ''}'
+        .toLowerCase();
     final searchMatches = query.isEmpty || searchable.contains(query);
     final filterMatches =
         _filter == 'ALL' || meal.status == _filter || meal.mealType == _filter;
@@ -242,7 +272,9 @@ class _VendorMealsViewState extends State<VendorMealsView> {
             children: [
               Expanded(
                 child: Text(
-                  meal.employeeName ?? meal.employeeCode ?? meal.employeeId,
+                  meal.employeeName?.trim().isNotEmpty == true
+                      ? meal.employeeName!
+                      : 'Employee',
                   style: TextStyle(
                     fontSize: 16.sp,
                     fontWeight: FontWeight.w700,
@@ -253,6 +285,11 @@ class _VendorMealsViewState extends State<VendorMealsView> {
               _status(meal.status),
             ],
           ),
+          if (meal.employeeCode?.trim().isNotEmpty == true)
+            Text(
+              meal.employeeCode!,
+              style: TextStyle(fontSize: 12.sp, color: AppColors.textMuted),
+            ),
           SizedBox(height: 6.h),
           Text(
             '${meal.mealType == 'DIET' ? 'Diet' : 'Normal'} Meal  |  Rs. ${meal.rate.toStringAsFixed(0)}',
@@ -302,7 +339,7 @@ class _VendorMealsViewState extends State<VendorMealsView> {
       builder: (context) => AlertDialog(
         title: const Text('Serve this meal?'),
         content: Text(
-          '${meal.employeeName ?? meal.employeeCode ?? meal.employeeId}\n${meal.mealType} Meal\nRs. ${meal.rate.toStringAsFixed(0)}',
+          '${meal.employeeName?.trim().isNotEmpty == true ? meal.employeeName : 'Employee'}\n${meal.employeeCode ?? 'Code unavailable'}\n${meal.mealType} Meal\nRs. ${meal.rate.toStringAsFixed(0)}',
         ),
         actions: [
           TextButton(
@@ -354,7 +391,7 @@ class _VendorMealsViewState extends State<VendorMealsView> {
   Color _statusColor(String status) => switch (status) {
     'SERVED' => AppColors.success,
     'CANCELLED' => AppColors.error,
-    'PAUSED' => AppColors.warning,
+    'PAUSED' => AppColors.paused,
     _ => AppColors.gold,
   };
 

@@ -5,8 +5,11 @@ import 'package:provider/provider.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../models/menu_model.dart';
-import '../../../providers/auth_provider.dart';
+import '../../../models/profile_model.dart';
 import '../../../providers/vendor/vendor_home_provider.dart';
+import '../../../core/widgets/loading_widget.dart';
+import '../../../core/widgets/menu_image.dart';
+import '../../../core/widgets/profile_avatar.dart';
 
 class VendorDashboardView extends StatefulWidget {
   const VendorDashboardView({super.key});
@@ -79,14 +82,18 @@ class _DashboardContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Header(vendor: vendor, profileName: profile.fullName),
+                    _Header(
+                      vendor: vendor,
+                      profileName: profile.fullName,
+                      profile: profile,
+                    ),
                     SizedBox(height: 28.h),
                     const _SectionTitle(
-                      title: 'Today at a glance',
+                      title: "Today's Glance",
                       subtitle: 'A clear view of your canteen operations',
                     ),
                     SizedBox(height: 14.h),
-                    const _StatisticsGrid(),
+                    _StatisticsGrid(provider: provider),
                     SizedBox(height: 28.h),
                     const _SectionTitle(
                       title: "Today's menu",
@@ -104,7 +111,6 @@ class _DashboardContent extends StatelessWidget {
                     SizedBox(height: 14.h),
                     const _QuickActions(),
                     SizedBox(height: 20.h),
-                    const _SignOutButton(),
                   ],
                 ),
               ),
@@ -141,6 +147,14 @@ class _GenerateMealsButton extends StatelessWidget {
               ? 'Generating Today\'s Meals...'
               : 'Generate Today\'s Meals',
         ),
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.gold,
+          foregroundColor: Colors.white,
+          minimumSize: Size.fromHeight(52.h),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18.r),
+          ),
+        ),
       ),
     );
   }
@@ -160,60 +174,16 @@ class _GenerateMealsButton extends StatelessWidget {
   }
 }
 
-class _SignOutButton extends StatelessWidget {
-  const _SignOutButton();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () => _confirmSignOut(context),
-        icon: const Icon(Icons.logout_rounded),
-        label: const Text('Sign Out'),
-      ),
-    );
-  }
-
-  Future<void> _confirmSignOut(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Sign Out?'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
-    if (!context.mounted || confirmed != true) return;
-
-    try {
-      await context.read<AuthProvider>().logout();
-      if (!context.mounted) return;
-      context.read<VendorHomeProvider>().clearData();
-      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
-    } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to sign out. Please try again.')),
-      );
-    }
-  }
-}
-
 class _Header extends StatelessWidget {
   final dynamic vendor;
   final String profileName;
+  final ProfileModel profile;
 
-  const _Header({required this.vendor, required this.profileName});
+  const _Header({
+    required this.vendor,
+    required this.profileName,
+    required this.profile,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -267,14 +237,19 @@ class _Header extends StatelessWidget {
           ),
         ),
         SizedBox(width: 16.w),
-        const _BrandMark(),
+        ProfileAvatar(
+          profile: profile,
+          onTap: () => Navigator.pushNamed(context, AppRoutes.vendorProfile),
+        ),
       ],
     );
   }
 }
 
 class _StatisticsGrid extends StatelessWidget {
-  const _StatisticsGrid();
+  final VendorHomeProvider provider;
+
+  const _StatisticsGrid({required this.provider});
 
   @override
   Widget build(BuildContext context) {
@@ -288,10 +263,30 @@ class _StatisticsGrid extends StatelessWidget {
         final gap = 12.w;
         final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
         final cards = [
-          (Icons.restaurant_outlined, "Today's Meals"),
-          (Icons.groups_outlined, 'Guest Meals'),
-          (Icons.badge_outlined, 'Active Employees'),
-          (Icons.payments_outlined, "Today's Revenue"),
+          (
+            Icons.restaurant_outlined,
+            "Today's Meals",
+            provider.isLoadingMeals ? '--' : '${provider.totalMeals}',
+          ),
+          (
+            Icons.groups_outlined,
+            'Guest Meals',
+            provider.isLoadingGuestMeals
+                ? '--'
+                : '${provider.todaysGuestMeals.length}',
+          ),
+          (
+            Icons.badge_outlined,
+            'Active Employees',
+            provider.activeEmployeeCount?.toString() ?? '--',
+          ),
+          (
+            Icons.payments_outlined,
+            "Today's Revenue",
+            provider.isLoadingMeals || provider.isLoadingGuestMeals
+                ? '--'
+                : 'Rs. ${provider.todaysRevenue.toStringAsFixed(0)}',
+          ),
         ];
 
         return Wrap(
@@ -299,7 +294,12 @@ class _StatisticsGrid extends StatelessWidget {
           runSpacing: gap,
           children: [
             for (final card in cards)
-              _StatCard(width: width, icon: card.$1, label: card.$2),
+              _StatCard(
+                width: width,
+                icon: card.$1,
+                label: card.$2,
+                value: card.$3,
+              ),
           ],
         );
       },
@@ -311,11 +311,13 @@ class _StatCard extends StatelessWidget {
   final double width;
   final IconData icon;
   final String label;
+  final String value;
 
   const _StatCard({
     required this.width,
     required this.icon,
     required this.label,
+    required this.value,
   });
 
   @override
@@ -334,7 +336,9 @@ class _StatCard extends StatelessWidget {
                   Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
                   SizedBox(height: 6.h),
                   Text(
-                    '--',
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 24.sp,
                       fontWeight: FontWeight.w700,
@@ -399,19 +403,11 @@ class _TodayMenuCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (menu!.imageUrl != null && menu!.imageUrl!.isNotEmpty)
-            ClipRRect(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-              child: Image.network(
-                menu!.imageUrl!,
-                height: 190.h,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const _MenuPlaceholder(),
-              ),
-            )
-          else
-            const _MenuPlaceholder(),
+          MenuImage(
+            url: menu!.imageUrl,
+            height: 190.h,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+          ),
           Padding(
             padding: EdgeInsets.all(20.w),
             child: Row(
@@ -469,7 +465,14 @@ class _MenuButton extends StatelessWidget {
       onPressed: () => Navigator.pushNamed(context, AppRoutes.vendorMenus),
       icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
       label: const Text('Manage Menu'),
-      style: FilledButton.styleFrom(shape: const StadiumBorder()),
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.gold,
+        foregroundColor: Colors.white,
+        minimumSize: Size(0, 52.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18.r),
+        ),
+      ),
     );
   }
 }
@@ -510,17 +513,12 @@ class _QuickActions extends StatelessWidget {
                     ? () => Navigator.pushNamed(context, AppRoutes.vendorMeals)
                     : action.$2 == 'Guest Meals'
                     ? () => Navigator.pushNamed(context, AppRoutes.vendorMeals)
-                    : () => _showUnavailable(context),
+                    : () =>
+                          Navigator.pushNamed(context, AppRoutes.vendorProfile),
               ),
           ],
         );
       },
-    );
-  }
-
-  static void _showUnavailable(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('This section is coming soon.')),
     );
   }
 }
@@ -721,73 +719,12 @@ class _StatusPill extends StatelessWidget {
   }
 }
 
-class _BrandMark extends StatelessWidget {
-  const _BrandMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 58.w,
-      height: 58.w,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.gold],
-        ),
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.20),
-            blurRadius: 18.r,
-          ),
-        ],
-      ),
-      child: Icon(Icons.restaurant_rounded, color: Colors.white, size: 28.sp),
-    );
-  }
-}
-
-class _MenuPlaceholder extends StatelessWidget {
-  const _MenuPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 150.h,
-      width: double.infinity,
-      color: AppColors.lightSage.withValues(alpha: 0.30),
-      child: Icon(
-        Icons.restaurant_menu_rounded,
-        size: 48.sp,
-        color: AppColors.primary,
-      ),
-    );
-  }
-}
-
 class _LoadingState extends StatelessWidget {
   const _LoadingState();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: _GlassCard(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 42.w,
-              height: 42.w,
-              child: const CircularProgressIndicator(),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              'Preparing your dashboard',
-              style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
-      ),
-    );
+    return const DataSkeleton(count: 5);
   }
 }
 

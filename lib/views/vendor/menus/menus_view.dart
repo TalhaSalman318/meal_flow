@@ -6,6 +6,9 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
 import '../../../models/menu_model.dart';
 import '../../../providers/vendor/menu_provider.dart';
+import '../../../core/widgets/loading_widget.dart';
+import '../../../core/widgets/menu_image.dart';
+import '../../../core/widgets/page_header.dart';
 import 'add_menu_view.dart';
 import 'edit_menu_view.dart';
 
@@ -30,40 +33,84 @@ class _VendorMenusViewState extends State<VendorMenusView> {
     final provider = context.watch<VendorMenuProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Menu Management'),
-        actions: [
-          IconButton(
-            onPressed: provider.isLoading ? null : () => provider.loadMenus(),
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh menus',
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: AppGradients.gold,
+          borderRadius: BorderRadius.circular(18.r),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 18.r,
+              offset: Offset(0, 8.h),
+              color: AppColors.primary.withValues(alpha: 0.18),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: provider.isSaving
+                ? null
+                : () async {
+                    await Navigator.push<void>(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AddMenuView(),
+                      ),
+                    );
+                    if (!context.mounted) return;
+                    context.read<VendorMenuProvider>().loadMenus();
+                  },
+            borderRadius: BorderRadius.circular(18.r),
+            child: SizedBox(
+              height: 52.h,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.add_rounded, color: Colors.white),
+                    SizedBox(width: 8.w),
+                    Text(
+                      'Add Menu',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: provider.isSaving
-            ? null
-            : () async {
-                await Navigator.push<void>(
-                  context,
-                  MaterialPageRoute<void>(builder: (_) => const AddMenuView()),
-                );
-                if (!context.mounted) return;
-                context.read<VendorMenuProvider>().loadMenus();
-              },
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Menu'),
+        ),
       ),
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.background),
         child: SafeArea(
-          child: provider.isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : provider.errorMessage != null
-              ? _error(provider)
-              : provider.isEmpty
-              ? _empty()
-              : _menuSections(provider),
+          child: Column(
+            children: [
+              PageHeader(
+                title: 'Menu Management',
+                actions: [
+                  IconButton(
+                    onPressed: provider.isLoading ? null : provider.loadMenus,
+                    icon: const Icon(Icons.refresh_rounded),
+                    tooltip: 'Refresh menus',
+                  ),
+                ],
+              ),
+              Expanded(
+                child: provider.isLoading
+                    ? const DataSkeleton()
+                    : provider.errorMessage != null
+                    ? _error(provider)
+                    : provider.isEmpty
+                    ? _empty()
+                    : _menuSections(provider),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -249,6 +296,10 @@ class _VendorMenusViewState extends State<VendorMenusView> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Delete'),
           ),
         ],
@@ -373,19 +424,8 @@ class _MenuCard extends StatelessWidget {
             SizedBox(height: 8.h),
             Text(menu.description!),
           ],
-          if (menu.imageUrl != null && menu.imageUrl!.isNotEmpty) ...[
-            SizedBox(height: 12.h),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14.r),
-              child: Image.network(
-                menu.imageUrl!,
-                height: 160.h,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
-            ),
-          ],
+          SizedBox(height: 12.h),
+          MenuImage(url: menu.imageUrl, height: 160.h),
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
+import '../../../core/widgets/loading_widget.dart';
 import '../../../models/meal_record_model.dart';
 import '../../../providers/employee_provider.dart';
 
@@ -48,7 +49,7 @@ class _MealHistoryViewState extends State<MealHistoryView> {
                 _calendar(provider),
                 SizedBox(height: 16.h),
                 if (provider.isMealHistoryLoading)
-                  const LinearProgressIndicator(),
+                  const SizedBox(height: 360, child: DataSkeleton(count: 3)),
                 if (provider.mealHistoryError != null)
                   _message(provider.mealHistoryError!, Icons.error_outline),
                 if (!provider.isMealHistoryLoading &&
@@ -152,27 +153,30 @@ class _MealHistoryViewState extends State<MealHistoryView> {
                     borderRadius: BorderRadius.circular(10.r),
                     border: selected ? Border.all(color: AppColors.gold) : null,
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
+                  child: Center(
+                    child: Container(
+                      width: status == null ? null : 28.w,
+                      height: status == null ? null : 28.w,
+                      alignment: Alignment.center,
+                      decoration: status == null
+                          ? null
+                          : BoxDecoration(
+                              color: _statusColor(status),
+                              shape: BoxShape.circle,
+                            ),
+                      child: Text(
                         '$day',
                         style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: status == null
+                              ? AppColors.textPrimary
+                              : Colors.white,
                           fontSize: 13.sp,
+                          fontWeight: status == null
+                              ? FontWeight.normal
+                              : FontWeight.w700,
                         ),
                       ),
-                      SizedBox(height: 3.h),
-                      if (status != null)
-                        Container(
-                          width: 7.w,
-                          height: 7.w,
-                          decoration: BoxDecoration(
-                            color: _statusColor(status),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                    ],
+                    ),
                   ),
                 ),
               );
@@ -184,7 +188,7 @@ class _MealHistoryViewState extends State<MealHistoryView> {
             runSpacing: 6.h,
             children: [
               _legend('Planned', AppColors.gold),
-              _legend('Paused', AppColors.warning),
+              _legend('Paused', AppColors.paused),
               _legend('Cancelled', AppColors.error),
               _legend('Served', AppColors.success),
             ],
@@ -229,7 +233,7 @@ class _MealHistoryViewState extends State<MealHistoryView> {
             ),
             SizedBox(width: 8.w),
             Expanded(
-              child: _summaryItem('Paused', count('PAUSED'), AppColors.warning),
+              child: _summaryItem('Paused', count('PAUSED'), AppColors.paused),
             ),
           ],
         ),
@@ -387,7 +391,7 @@ class _MealHistoryViewState extends State<MealHistoryView> {
       TextStyle(fontSize: 14.sp, color: color ?? AppColors.textSecondary);
 
   Color _statusColor(String status) => switch (status) {
-    'PAUSED' => AppColors.warning,
+    'PAUSED' => AppColors.paused,
     'CANCELLED' => AppColors.error,
     'SERVED' => AppColors.success,
     'NO MEAL' => AppColors.textMuted,

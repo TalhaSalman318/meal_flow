@@ -14,6 +14,8 @@ declare
   current_employee_id uuid;
   meal_record public.meal_records%rowtype;
   cancellation_time timestamptz;
+  karachi_now timestamp;
+  karachi_date date;
 begin
   current_employee_id := public.get_my_employee_id();
 
@@ -21,11 +23,17 @@ begin
     raise exception 'Employee record not found.';
   end if;
 
+  karachi_now := timezone('Asia/Karachi', now());
+  karachi_date := karachi_now::date;
+  if karachi_now::time >= time '13:00:00' then
+    raise exception 'Today''s meal cancellation window has closed.';
+  end if;
+
   select *
     into meal_record
     from public.meal_records
    where employee_id = current_employee_id
-     and meal_date = current_date
+       and meal_date = karachi_date
    for update;
 
   if not found then
@@ -64,9 +72,9 @@ begin
   )
   select
     current_employee_id,
-    current_date,
+    karachi_date,
     'CANCELLATION'::public.transaction_type,
-    'Meal cancellation - ' || current_date,
+    'Meal cancellation - ' || karachi_date,
     0,
     meal_record.rate,
     meal_record.id

@@ -468,8 +468,13 @@ class EmployeeService {
 
     try {
       final result = await _client.rpc('cancel_my_today_meal');
-      final data = result is List ? result.first : result;
-      final meal = Map<String, dynamic>.from(data as Map);
+      final data = result is List
+          ? (result.isEmpty ? null : result.first)
+          : result;
+      if (data is! Map) {
+        throw StateError('Meal cancellation returned no updated meal.');
+      }
+      final meal = Map<String, dynamic>.from(data);
 
       if (kDebugMode) {
         debugPrint('[Employee Meal] CANCEL SUCCESS: $meal');
