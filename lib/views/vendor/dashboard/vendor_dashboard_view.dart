@@ -10,6 +10,7 @@ import '../../../providers/vendor/vendor_home_provider.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/menu_image.dart';
 import '../../../core/widgets/profile_avatar.dart';
+import '../../../core/widgets/app_error_view.dart';
 
 class VendorDashboardView extends StatefulWidget {
   const VendorDashboardView({super.key});
@@ -43,7 +44,12 @@ class _VendorDashboardViewState extends State<VendorDashboardView> {
                     (!provider.hasData && provider.errorMessage == null)
                 ? const _LoadingState()
                 : provider.errorMessage != null
-                ? _ErrorState(onRetry: provider.loadVendorData)
+                ? AppErrorView(
+                    message: provider.errorMessage!,
+                    onRetry: () {
+                      provider.loadVendorData();
+                    },
+                  )
                 : _DashboardContent(provider: provider),
           ),
         ],
@@ -725,45 +731,6 @@ class _LoadingState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const DataSkeleton(count: 5);
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  final Future<bool> Function() onRetry;
-
-  const _ErrorState({required this.onRetry});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(24.w),
-        child: _GlassCard(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.error_outline_rounded,
-                size: 52.sp,
-                color: AppColors.error,
-              ),
-              SizedBox(height: 14.h),
-              Text(
-                'Unable to load vendor data',
-                style: TextStyle(fontSize: 17.sp, fontWeight: FontWeight.w700),
-              ),
-              SizedBox(height: 18.h),
-              FilledButton.icon(
-                onPressed: onRetry,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Try Again'),
-                style: FilledButton.styleFrom(shape: const StadiumBorder()),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

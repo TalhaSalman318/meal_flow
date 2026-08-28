@@ -17,6 +17,10 @@ declare
   karachi_now timestamp;
   karachi_date date;
 begin
+  if auth.uid() is null then
+    raise exception 'Authentication is required.';
+  end if;
+
   current_employee_id := public.get_my_employee_id();
 
   if current_employee_id is null then
@@ -25,15 +29,15 @@ begin
 
   karachi_now := timezone('Asia/Karachi', now());
   karachi_date := karachi_now::date;
-  if karachi_now::time >= time '13:00:00' then
+  if karachi_now::time >= time '10:00:00' then
     raise exception 'Today''s meal cancellation window has closed.';
   end if;
 
   select *
     into meal_record
-    from public.meal_records
-   where employee_id = current_employee_id
-       and meal_date = karachi_date
+    from public.meal_records as mr
+     where mr.employee_id = current_employee_id
+       and mr.meal_date = karachi_date
    for update;
 
   if not found then
@@ -54,12 +58,12 @@ begin
 
     cancellation_time := now();
 
-    update public.meal_records
+    update public.meal_records as mr
      set status = 'CANCELLED'::public.meal_status,
       cancelled_at = cancellation_time,
          updated_by = auth.uid(),
          updated_at = now()
-   where id = meal_record.id;
+  where mr.id = meal_record.id;
 
   insert into public.ledger (
     employee_id,
@@ -80,10 +84,10 @@ begin
     meal_record.id
   where not exists (
     select 1
-      from public.ledger
-     where employee_id = current_employee_id
-       and transaction_type = 'CANCELLATION'::public.transaction_type
-       and reference_id = meal_record.id
+      from public.ledger as l
+     where l.employee_id = current_employee_id
+       and l.transaction_type = 'CANCELLATION'::public.transaction_type
+       and l.reference_id = meal_record.id
   );
 
   return query

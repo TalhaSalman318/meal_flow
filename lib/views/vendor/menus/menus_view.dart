@@ -9,6 +9,7 @@ import '../../../providers/vendor/menu_provider.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/menu_image.dart';
 import '../../../core/widgets/page_header.dart';
+import '../../../core/widgets/app_error_view.dart';
 import 'add_menu_view.dart';
 import 'edit_menu_view.dart';
 
@@ -348,23 +349,11 @@ class _VendorMenusViewState extends State<VendorMenusView> {
   }
 
   Widget _error(VendorMenuProvider provider) {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(24.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline_rounded, size: 55.sp),
-            SizedBox(height: 15.h),
-            Text(provider.errorMessage!, textAlign: TextAlign.center),
-            SizedBox(height: 20.h),
-            ElevatedButton(
-              onPressed: provider.loadMenus,
-              child: const Text('Try Again'),
-            ),
-          ],
-        ),
-      ),
+    return AppErrorView(
+      message: provider.errorMessage!,
+      onRetry: () {
+        provider.loadMenus();
+      },
     );
   }
 }

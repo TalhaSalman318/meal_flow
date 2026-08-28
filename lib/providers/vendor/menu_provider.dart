@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/services/vendor_menu_service.dart';
 import '../../models/menu_model.dart';
+import '../../core/errors/app_error.dart';
 
 class VendorMenuProvider extends ChangeNotifier {
   final List<MenuModel> _menus = [];
@@ -36,7 +37,10 @@ class VendorMenuProvider extends ChangeNotifier {
       return true;
     } catch (error) {
       VendorMenuService.logError(error);
-      _errorMessage = 'Unable to load your menus. Please try again.';
+      _errorMessage = AppError.message(
+        error,
+        fallback: 'Unable to load your menus. Please try again.',
+      );
       _isLoading = false;
       notifyListeners();
       return false;
@@ -60,7 +64,10 @@ class VendorMenuProvider extends ChangeNotifier {
       return true;
     } catch (error) {
       VendorMenuService.logError(error);
-      _errorMessage = 'Unable to load your menus. Please try again.';
+      _errorMessage = AppError.message(
+        error,
+        fallback: 'Unable to load your menus. Please try again.',
+      );
       _isLoading = false;
       notifyListeners();
       return false;
@@ -174,6 +181,6 @@ class VendorMenuProvider extends ChangeNotifier {
         return "You don't have permission to manage menus.";
       }
     }
-    return 'Something went wrong. Please try again.';
+    return AppError.message(error);
   }
 }

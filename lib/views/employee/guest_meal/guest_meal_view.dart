@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
 import '../../../core/widgets/loading_widget.dart';
+import '../../../core/widgets/page_header.dart';
+import '../../../core/widgets/app_error_view.dart';
 import '../../../models/guest_meal_model.dart';
 import '../../../providers/employee_provider.dart';
 
@@ -47,45 +49,87 @@ class _GuestMealViewState extends State<GuestMealView> {
   Widget build(BuildContext context) {
     final provider = context.watch<EmployeeProvider>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Guest Meals')),
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.background),
         child: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: provider.refreshGuestMeals,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.all(20.w),
-              children: [
-                Text(
-                  'Today\'s guest meals',
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    color: AppColors.textSecondary,
+          child: Column(
+            children: [
+              const PageHeader(title: 'Guest Meals'),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: provider.refreshGuestMeals,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(20.w),
+                    children: [
+                      Text(
+                        'Today\'s guest meals',
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 16.h),
+                      _summary(provider),
+                      SizedBox(height: 16.h),
+                      _gradientButton(
+                        onPressed: provider.isAddingGuestMeal
+                            ? null
+                            : _openAddSheet,
+                        icon: Icons.person_add_alt_1,
+                        label: 'Add Guest Meal',
+                      ),
+                      SizedBox(height: 20.h),
+                      if (provider.isLoadingGuestMeals)
+                        const SizedBox(
+                          height: 360,
+                          child: DataSkeleton(count: 3),
+                        ),
+                      if (provider.guestMealError != null)
+                        AppErrorView(
+                          message: provider.guestMealError!,
+                          onRetry: provider.refreshGuestMeals,
+                        ),
+                      if (!provider.isLoadingGuestMeals &&
+                          provider.guestMealError == null &&
+                          provider.guestMeals.isEmpty)
+                        _message(
+                          'No guest meals yet.\nAdd a guest meal to see it here.',
+                        ),
+                      for (final meal in provider.guestMeals) _guestCard(meal),
+                    ],
                   ),
                 ),
-                SizedBox(height: 16.h),
-                _summary(provider),
-                SizedBox(height: 16.h),
-                FilledButton.icon(
-                  onPressed: provider.isAddingGuestMeal ? null : _openAddSheet,
-                  icon: const Icon(Icons.person_add_alt_1),
-                  label: const Text('Add Guest Meal'),
-                ),
-                SizedBox(height: 20.h),
-                if (provider.isLoadingGuestMeals)
-                  const SizedBox(height: 360, child: DataSkeleton(count: 3)),
-                if (provider.guestMealError != null)
-                  _message(provider.guestMealError!),
-                if (!provider.isLoadingGuestMeals &&
-                    provider.guestMealError == null &&
-                    provider.guestMeals.isEmpty)
-                  _message(
-                    'No guest meals yet.\nAdd a guest meal to see it here.',
-                  ),
-                for (final meal in provider.guestMeals) _guestCard(meal),
-              ],
-            ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _gradientButton({
+    required VoidCallback? onPressed,
+    required String label,
+    IconData? icon,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: AppGradients.gold,
+        borderRadius: BorderRadius.circular(18.r),
+      ),
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          disabledBackgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          elevation: 0,
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18.r),
           ),
         ),
       ),
@@ -186,6 +230,10 @@ class _GuestMealViewState extends State<GuestMealView> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: AppColors.cream,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
           padding: EdgeInsets.only(
@@ -308,19 +356,13 @@ class _GuestMealViewState extends State<GuestMealView> {
                       ),
                       SizedBox(width: 10.w),
                       Expanded(
-                        child: FilledButton(
+                        child: _gradientButton(
                           onPressed: provider.isAddingGuestMeal
                               ? null
                               : () => _submit(provider),
-                          child: provider.isAddingGuestMeal
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text('Add Guest Meal'),
+                          label: provider.isAddingGuestMeal
+                              ? 'Adding...'
+                              : 'Add Guest Meal',
                         ),
                       ),
                     ],
@@ -352,9 +394,9 @@ class _GuestMealViewState extends State<GuestMealView> {
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          _gradientButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Confirm'),
+            label: 'Confirm',
           ),
         ],
       ),

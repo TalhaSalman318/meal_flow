@@ -482,7 +482,17 @@ class EmployeeService {
       return meal;
     } catch (error) {
       if (kDebugMode) {
-        debugPrint('[Employee Meal] CANCEL ERROR: $error');
+        if (error is PostgrestException) {
+          debugPrint(
+            '[Employee Meal] CANCEL ERROR: '
+            'message="${error.message}", '
+            'code=${error.code}, '
+            'details="${error.details}", '
+            'hint="${error.hint}"',
+          );
+        } else {
+          debugPrint('[Employee Meal] CANCEL ERROR: $error');
+        }
       }
       rethrow;
     }

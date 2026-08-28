@@ -15,6 +15,12 @@ class AppTheme {
       brightness: Brightness.light,
     ),
 
+    textSelectionTheme: const TextSelectionThemeData(
+      cursorColor: AppColors.primary,
+      selectionColor: AppColors.lightSage,
+      selectionHandleColor: AppColors.primary,
+    ),
+
     fontFamily: 'Inter',
 
     appBarTheme: const AppBarTheme(
@@ -47,6 +53,23 @@ class AppTheme {
         borderRadius: BorderRadius.circular(18),
         borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
       ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: AppColors.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: AppColors.border),
+      ),
+      labelStyle: const TextStyle(color: AppColors.textSecondary),
+      floatingLabelStyle: const TextStyle(color: AppColors.primary),
+      hintStyle: const TextStyle(color: AppColors.textMuted),
+      prefixIconColor: AppColors.textSecondary,
+      suffixIconColor: AppColors.textSecondary,
     ),
 
     filledButtonTheme: FilledButtonThemeData(

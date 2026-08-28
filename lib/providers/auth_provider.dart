@@ -1,9 +1,8 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/services/auth_service.dart';
+import '../core/errors/app_error.dart';
 
 class AuthProvider extends ChangeNotifier {
   bool _isLoading = false;
@@ -162,57 +161,10 @@ class AuthProvider extends ChangeNotifier {
       return _withSupabaseDetails(message, error.statusCode, error.code);
     }
 
-    if (error is PostgrestException) {
-      _logSupabaseError(error);
-
-      final message = error.message;
-      final lowerMessage = message.toLowerCase();
-
-      if (error.code == '42501' ||
-          lowerMessage.contains('row-level security') ||
-          lowerMessage.contains('permission denied')) {
-        return 'Supabase rejected the database request because of Row Level Security (RLS). '
-            'Check the INSERT policies for profiles, employees, or vendors.';
-      }
-
-      if (error.code == '23505') {
-        if (lowerMessage.contains('employee_code')) {
-          return 'Employee code already exists. Check the employee code trigger.';
-        }
-
-        if (lowerMessage.contains('vendor_code')) {
-          return 'Vendor code already exists.';
-        }
-
-        return 'A record with this information already exists. '
-            'Supabase code: 23505.';
-      }
-
-      if (error.code == '23503') {
-        return 'A related profile record is missing. '
-            'Please check the profile/employee relationship.';
-      }
-
-      if (error.code == '23502') {
-        return 'A required database field is missing. '
-            'Check the employees table columns/defaults.';
-      }
-
-      return _withSupabaseDetails(message, null, error.code);
-    }
-
-    if (error is TimeoutException) {
-      return 'The request timed out. Check your internet connection and try again.';
-    }
-
-    if (kDebugMode) {
-      debugPrint(
-        '[Signup unexpected error] '
-        '${error.runtimeType}: $error',
-      );
-    }
-
-    return 'Unexpected error: ${error.runtimeType}';
+    return AppError.message(
+      error,
+      fallback: 'Unable to complete authentication. Please try again.',
+    );
   }
 
   // ============================================================

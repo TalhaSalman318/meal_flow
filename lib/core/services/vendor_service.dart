@@ -155,16 +155,12 @@ class VendorService {
   }
 
   static Future<int> loadActiveEmployeeCount() async {
-    final today = _dateOnly(DateTime.now());
     final result = await _client
-        .from('subscriptions')
-        .select('employee_id, employees!inner(status)')
-        .eq('status', 'ACTIVE')
-        .eq('employees.status', 'ACTIVE')
-        .lte('start_date', today)
-        .gte('end_date', today);
+        .from('employees')
+        .select('id')
+        .eq('status', 'ACTIVE');
     final employeeIds = (result as List)
-        .map((row) => (row as Map)['employee_id'])
+        .map((row) => (row as Map)['id'])
         .whereType<String>()
         .toSet();
     return employeeIds.length;

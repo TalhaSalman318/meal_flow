@@ -6,6 +6,8 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/menu_image.dart';
+import '../../../core/widgets/page_header.dart';
+import '../../../core/widgets/app_error_view.dart';
 import '../../../models/menu_model.dart';
 import '../../../providers/employee_provider.dart';
 
@@ -32,34 +34,48 @@ class _EmployeeMenusViewState extends State<EmployeeMenusView> {
         .where((menu) => menu.isForDate(DateTime.now()))
         .firstOrNull;
     return Scaffold(
-      appBar: AppBar(title: const Text('Monthly Menu')),
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.background),
         child: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: provider.loadMenusForMonth,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.all(20.w),
-              children: [
-                _monthHeader(provider),
-                SizedBox(height: 16.h),
-                if (provider.isMenuLoading)
-                  const SizedBox(height: 360, child: DataSkeleton(count: 3)),
-                if (provider.menuError != null) _message(provider.menuError!),
-                if (!provider.isMenuLoading &&
-                    provider.menuError == null &&
-                    provider.menus.isEmpty)
-                  _message('No menus planned for this month.'),
-                if (selected != null) ...[
-                  _heading("Today's Menu"),
-                  _menuCard(selected, highlight: true),
-                  SizedBox(height: 18.h),
-                ],
-                if (provider.menus.isNotEmpty) _heading('Menus This Month'),
-                for (final menu in provider.menus) _menuCard(menu),
-              ],
-            ),
+          child: Column(
+            children: [
+              const PageHeader(title: 'Monthly Menu'),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: provider.loadMenusForMonth,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(20.w),
+                    children: [
+                      _monthHeader(provider),
+                      SizedBox(height: 16.h),
+                      if (provider.isMenuLoading)
+                        const SizedBox(
+                          height: 360,
+                          child: DataSkeleton(count: 3),
+                        ),
+                      if (provider.menuError != null)
+                        AppErrorView(
+                          message: provider.menuError!,
+                          onRetry: provider.loadMenusForMonth,
+                        ),
+                      if (!provider.isMenuLoading &&
+                          provider.menuError == null &&
+                          provider.menus.isEmpty)
+                        _message('No menus planned for this month.'),
+                      if (selected != null) ...[
+                        _heading("Today's Menu"),
+                        _menuCard(selected, highlight: true),
+                        SizedBox(height: 18.h),
+                      ],
+                      if (provider.menus.isNotEmpty)
+                        _heading('Menus This Month'),
+                      for (final menu in provider.menus) _menuCard(menu),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

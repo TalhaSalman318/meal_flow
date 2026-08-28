@@ -6,6 +6,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
 import '../../../core/widgets/loading_widget.dart';
 import '../../../core/widgets/page_header.dart';
+import '../../../core/widgets/app_error_view.dart';
 import '../../../models/meal_record_model.dart';
 import '../../../models/guest_meal_model.dart';
 import '../../../providers/vendor/vendor_home_provider.dart';
@@ -83,7 +84,10 @@ class _VendorMealsViewState extends State<VendorMealsView> {
                           child: DataSkeleton(count: 3),
                         ),
                       if (provider.mealError != null)
-                        _message(provider.mealError!, Icons.error_outline),
+                        AppErrorView(
+                          message: provider.mealError!,
+                          onRetry: provider.refreshTodaysMeals,
+                        ),
                       if (!provider.isLoadingMeals &&
                           provider.mealError == null &&
                           meals.isEmpty)
@@ -126,7 +130,10 @@ class _VendorMealsViewState extends State<VendorMealsView> {
         if (provider.isLoadingGuestMeals)
           const SizedBox(height: 360, child: DataSkeleton(count: 3)),
         if (provider.guestMealError != null)
-          _message(provider.guestMealError!, Icons.error_outline),
+          AppErrorView(
+            message: provider.guestMealError!,
+            onRetry: provider.refreshTodaysGuestMeals,
+          ),
         for (final meal in provider.todaysGuestMeals) _guestMealCard(meal),
       ],
     );

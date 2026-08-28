@@ -11,6 +11,7 @@ import '../../providers/employee_provider.dart';
 import '../../core/widgets/loading_widget.dart';
 import '../../core/widgets/menu_image.dart';
 import '../../core/widgets/profile_avatar.dart';
+import '../../core/widgets/app_error_view.dart';
 
 class EmployeeHomeView extends StatefulWidget {
   const EmployeeHomeView({super.key});
@@ -20,7 +21,7 @@ class EmployeeHomeView extends StatefulWidget {
 }
 
 class _EmployeeHomeViewState extends State<EmployeeHomeView> {
-  static const int _cancellationCutoffHour = 13;
+  static const int _cancellationCutoffHour = 10;
   Timer? _cancellationCutoffTimer;
   bool _canCancelToday = true;
   Duration _cancellationTimeRemaining = Duration.zero;
@@ -573,7 +574,7 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Cancel meal until 1:00 PM',
+                    'Cancel meal until 10:00 AM',
                     style: TextStyle(
                       fontSize: 12.sp,
                       color: AppColors.textSecondary,
@@ -624,7 +625,7 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
             Padding(
               padding: EdgeInsets.only(top: 12.h),
               child: Text(
-                'Meal cancellation is closed after 1 PM.',
+                'Meal cancellation is closed after 10 AM.',
                 style: TextStyle(
                   fontSize: 12.sp,
                   color: AppColors.textSecondary,
@@ -988,35 +989,9 @@ class _EmployeeHomeViewState extends State<EmployeeHomeView> {
   // ============================================================
 
   Widget _buildError(EmployeeProvider provider) {
-    return Center(
-      child: Padding(
-        padding: EdgeInsets.all(24.w),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline_rounded,
-              size: 55.sp,
-              color: AppColors.primary,
-            ),
-
-            SizedBox(height: 15.h),
-
-            Text(
-              provider.errorMessage!,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 15.sp, color: AppColors.textPrimary),
-            ),
-
-            SizedBox(height: 20.h),
-
-            ElevatedButton(
-              onPressed: provider.loadEmployeeData,
-              child: const Text('Try Again'),
-            ),
-          ],
-        ),
-      ),
+    return AppErrorView(
+      message: provider.errorMessage!,
+      onRetry: provider.loadEmployeeData,
     );
   }
 }

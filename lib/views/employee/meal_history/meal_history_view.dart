@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/theme/app_gradients.dart';
+import '../../../core/widgets/page_header.dart';
 import '../../../core/widgets/loading_widget.dart';
+import '../../../core/widgets/app_error_view.dart';
 import '../../../models/meal_record_model.dart';
 import '../../../providers/employee_provider.dart';
 
@@ -28,42 +30,54 @@ class _MealHistoryViewState extends State<MealHistoryView> {
   Widget build(BuildContext context) {
     final provider = context.watch<EmployeeProvider>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Meal History')),
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.background),
         child: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: provider.refreshMealHistory,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.all(20.w),
-              children: [
-                Text(
-                  'Track your daily meals',
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    color: AppColors.textSecondary,
+          child: Column(
+            children: [
+              const PageHeader(title: 'Meal History'),
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: provider.refreshMealHistory,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(20.w),
+                    children: [
+                      Text(
+                        'Track your daily meals',
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      SizedBox(height: 16.h),
+                      _calendar(provider),
+                      SizedBox(height: 16.h),
+                      if (provider.isMealHistoryLoading)
+                        const SizedBox(
+                          height: 360,
+                          child: DataSkeleton(count: 3),
+                        ),
+                      if (provider.mealHistoryError != null)
+                        AppErrorView(
+                          message: provider.mealHistoryError!,
+                          onRetry: provider.refreshMealHistory,
+                        ),
+                      if (!provider.isMealHistoryLoading &&
+                          provider.mealHistoryError == null &&
+                          provider.mealHistory.isEmpty)
+                        _message(
+                          'No meal history for this month',
+                          Icons.calendar_month,
+                        ),
+                      if (provider.mealHistory.isNotEmpty) _summary(provider),
+                      SizedBox(height: 16.h),
+                      _selectedDetails(provider),
+                    ],
                   ),
                 ),
-                SizedBox(height: 16.h),
-                _calendar(provider),
-                SizedBox(height: 16.h),
-                if (provider.isMealHistoryLoading)
-                  const SizedBox(height: 360, child: DataSkeleton(count: 3)),
-                if (provider.mealHistoryError != null)
-                  _message(provider.mealHistoryError!, Icons.error_outline),
-                if (!provider.isMealHistoryLoading &&
-                    provider.mealHistoryError == null &&
-                    provider.mealHistory.isEmpty)
-                  _message(
-                    'No meal history for this month',
-                    Icons.calendar_month,
-                  ),
-                if (provider.mealHistory.isNotEmpty) _summary(provider),
-                SizedBox(height: 16.h),
-                _selectedDetails(provider),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

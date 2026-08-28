@@ -9,6 +9,8 @@ import '../../core/services/empolyee_services.dart';
 import '../../core/services/vendor_service.dart';
 import '../../core/widgets/profile_avatar.dart';
 import '../../core/widgets/loading_widget.dart';
+import '../../core/widgets/app_error_view.dart';
+import '../../core/errors/app_error.dart';
 import '../../models/employee_model.dart';
 import '../../models/profile_model.dart';
 import '../../models/vendor_model.dart';
@@ -56,8 +58,11 @@ class _ProfileViewState extends State<ProfileView> {
         final data = await VendorService.getCurrentVendor();
         if (data != null) _vendor = VendorModel.fromMap(data);
       }
-    } catch (_) {
-      _error = 'Unable to load profile details. Please try again.';
+    } catch (error) {
+      _error = AppError.message(
+        error,
+        fallback: 'Unable to load profile details. Please try again.',
+      );
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -71,7 +76,10 @@ class _ProfileViewState extends State<ProfileView> {
         child: _loading
             ? const SafeArea(child: _ProfileSkeleton())
             : profile == null || _error != null
-            ? Center(child: Text(_error ?? 'Profile not found.'))
+            ? AppErrorView(
+                message: _error ?? 'Profile not found.',
+                onRetry: _loadDetails,
+              )
             : SafeArea(child: _content(profile)),
       ),
     );
@@ -222,11 +230,16 @@ class _ProfileViewState extends State<ProfileView> {
       context.read<EmployeeProvider>().clearData();
       context.read<VendorHomeProvider>().clearData();
       Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to sign out. Please try again.'),
+          SnackBar(
+            content: Text(
+              AppError.message(
+                error,
+                fallback: 'Unable to sign out. Please try again.',
+              ),
+            ),
           ),
         );
       }

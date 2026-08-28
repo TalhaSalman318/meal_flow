@@ -10,6 +10,7 @@ import '../models/menu_model.dart';
 import '../models/profile_model.dart';
 import '../models/subscription_model.dart';
 import '../models/subscription_pause_model.dart';
+import '../core/errors/app_error.dart';
 
 class EmployeeProvider extends ChangeNotifier {
   bool _isLoading = false;
@@ -183,6 +184,10 @@ class EmployeeProvider extends ChangeNotifier {
         }
       } catch (error) {
         _todaysMenu = null;
+        _menuError = AppError.message(
+          error,
+          fallback: 'Unable to load today\'s menu.',
+        );
 
         if (kDebugMode) {
           debugPrint('[Employee Menu] PROVIDER ERROR: $error');
@@ -198,7 +203,10 @@ class EmployeeProvider extends ChangeNotifier {
 
       return true;
     } catch (error) {
-      _errorMessage = 'Unable to load employee data. Please try again.';
+      _errorMessage = AppError.message(
+        error,
+        fallback: 'Unable to load employee data. Please try again.',
+      );
 
       if (kDebugMode) {
         debugPrint('[EmployeeProvider] ERROR: $error');
@@ -225,7 +233,10 @@ class EmployeeProvider extends ChangeNotifier {
       }
     } catch (error) {
       _todayMeal = null;
-      _mealErrorMessage = 'Unable to load today\'s meal.';
+      _mealErrorMessage = AppError.message(
+        error,
+        fallback: 'Unable to load today\'s meal.',
+      );
       if (kDebugMode) {
         debugPrint('[Employee Meal] ERROR: $error');
       }
@@ -308,12 +319,18 @@ class EmployeeProvider extends ChangeNotifier {
       return 'No meal is scheduled for today.';
     }
     if (lowerMessage.contains('cancellation window has closed')) {
-      return 'Meal cancellation closed after 1:00 PM.';
+      return 'Meal cancellation closed after 10:00 AM.';
     }
     if (error is PostgrestException && error.code == '42501') {
       return 'You do not have permission to cancel this meal.';
     }
-    return 'Unable to cancel today\'s meal.';
+    if (error is PostgrestException) {
+      if (error.code == '42883' || error.code == 'PGRST202') {
+        return 'Meal cancellation is not configured on the server.';
+      }
+      return 'Cancellation failed: ${error.message}';
+    }
+    return AppError.message(error, fallback: 'Unable to cancel today\'s meal.');
   }
 
   Future<void> loadSubscription() async {
@@ -335,7 +352,10 @@ class EmployeeProvider extends ChangeNotifier {
         debugPrint('[Employee Subscription] RESULT: $subscriptionStatus');
       }
     } catch (error) {
-      _subscriptionError = 'Unable to load subscription.';
+      _subscriptionError = AppError.message(
+        error,
+        fallback: 'Unable to load subscription.',
+      );
       if (kDebugMode) {
         debugPrint('[Employee Subscription] ERROR: $error');
       }
@@ -357,7 +377,10 @@ class EmployeeProvider extends ChangeNotifier {
       _guestMeals = meals.map(GuestMealModel.fromMap).toList();
     } catch (error) {
       _guestMeals = [];
-      _guestMealError = 'Unable to load guest meals.';
+      _guestMealError = AppError.message(
+        error,
+        fallback: 'Unable to load guest meals.',
+      );
       if (kDebugMode) debugPrint('[Employee Guest Meal] ERROR: $error');
     } finally {
       _isLoadingGuestMeals = false;
@@ -370,7 +393,10 @@ class EmployeeProvider extends ChangeNotifier {
       _activeVendors = await EmployeeService.getActiveVendors();
       notifyListeners();
     } catch (error) {
-      _guestMealError = 'Unable to load available vendors.';
+      _guestMealError = AppError.message(
+        error,
+        fallback: 'Unable to load available vendors.',
+      );
       if (kDebugMode) debugPrint('[Employee Guest Meal] ERROR: $error');
       notifyListeners();
     }
@@ -388,7 +414,10 @@ class EmployeeProvider extends ChangeNotifier {
       );
       _guestMeals = meals.map(GuestMealModel.fromMap).toList();
     } catch (error) {
-      _guestMealError = 'Unable to load guest meals.';
+      _guestMealError = AppError.message(
+        error,
+        fallback: 'Unable to load guest meals.',
+      );
       if (kDebugMode) debugPrint('[Employee Guest Meal] ERROR: $error');
     } finally {
       _isLoadingGuestMeals = false;
@@ -484,7 +513,10 @@ class EmployeeProvider extends ChangeNotifier {
       _guestMeals = [];
       _activeVendors = [];
       _guestMealError = null;
-      _mealHistoryError = 'Unable to load meal history.';
+      _mealHistoryError = AppError.message(
+        error,
+        fallback: 'Unable to load meal history.',
+      );
       if (kDebugMode) {
         debugPrint('[Employee Meal History] ERROR: $error');
       }
@@ -597,7 +629,7 @@ class EmployeeProvider extends ChangeNotifier {
     } catch (error) {
       _subscriptionError = error is PostgrestException && error.code == '42501'
           ? 'You do not have permission to update this subscription.'
-          : 'Unable to update subscription.';
+          : AppError.message(error, fallback: 'Unable to update subscription.');
       if (kDebugMode) {
         debugPrint('[Employee Subscription] ERROR: $error');
       }

@@ -8,6 +8,7 @@ import '../../models/meal_record_model.dart';
 import '../../models/guest_meal_model.dart';
 import '../../models/profile_model.dart';
 import '../../models/vendor_model.dart';
+import '../../core/errors/app_error.dart';
 
 class VendorHomeProvider extends ChangeNotifier {
   bool _isLoading = false;
@@ -111,7 +112,10 @@ class VendorHomeProvider extends ChangeNotifier {
 
       _errorMessage ??= 'Vendor record not found.';
     } catch (error) {
-      _errorMessage = 'Unable to load vendor data. Please try again.';
+      _errorMessage = AppError.message(
+        error,
+        fallback: 'Unable to load vendor data. Please try again.',
+      );
 
       if (kDebugMode) {
         debugPrint('[VendorHomeProvider] ERROR: $error');
@@ -149,7 +153,10 @@ class VendorHomeProvider extends ChangeNotifier {
       _mealGenerationError =
           error is PostgrestException && error.code == '42501'
           ? 'You do not have permission to generate meals.'
-          : 'Unable to generate today\'s meals.';
+          : AppError.message(
+              error,
+              fallback: 'Unable to generate today\'s meals.',
+            );
       if (kDebugMode) {
         debugPrint('[Vendor Meal Generation] ERROR: $error');
       }
@@ -172,7 +179,7 @@ class VendorHomeProvider extends ChangeNotifier {
       _todaysMeals = [];
       _mealError = error is PostgrestException && error.code == '42501'
           ? 'You do not have permission to view today\'s meals.'
-          : 'Unable to load today\'s meals.';
+          : AppError.message(error, fallback: 'Unable to load today\'s meals.');
       if (kDebugMode) {
         debugPrint('[Vendor Meals] ERROR: $error');
       }
@@ -194,7 +201,10 @@ class VendorHomeProvider extends ChangeNotifier {
       _todaysGuestMeals = [];
       _guestMealError = error is PostgrestException && error.code == '42501'
           ? 'You do not have permission to view guest meals.'
-          : 'Unable to load today\'s guest meals.';
+          : AppError.message(
+              error,
+              fallback: 'Unable to load today\'s guest meals.',
+            );
       if (kDebugMode) debugPrint('[Vendor Guest Meals] ERROR: $error');
     } finally {
       _isLoadingGuestMeals = false;
@@ -245,7 +255,7 @@ class VendorHomeProvider extends ChangeNotifier {
     if (lower.contains('already served')) return 'Meal is already served.';
     if (lower.contains('cancelled')) return 'Cancelled meals cannot be served.';
     if (lower.contains('not found')) return 'Meal not found.';
-    return 'Unable to serve meal.';
+    return AppError.message(error, fallback: 'Unable to serve meal.');
   }
 
   void clearData() {
