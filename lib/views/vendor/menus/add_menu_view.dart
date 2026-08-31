@@ -71,16 +71,35 @@ class _AddMenuViewState extends State<AddMenuView> {
                 SizedBox(height: 16.h),
                 _imagePicker(),
                 SizedBox(height: 28.h),
-                FilledButton.icon(
-                  onPressed: provider.isSaving ? null : _save,
-                  icon: provider.isSaving
-                      ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save_outlined),
-                  label: const Text('Save Menu'),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: AppGradients.gold,
+                    borderRadius: BorderRadius.circular(18.r),
+                  ),
+                  child: FilledButton.icon(
+                    onPressed: provider.isSaving ? null : _save,
+                    icon: provider.isSaving
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: const Text('Save Menu'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      disabledBackgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      elevation: 0,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18.r),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

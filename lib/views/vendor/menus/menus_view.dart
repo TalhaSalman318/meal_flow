@@ -234,10 +234,26 @@ class _VendorMenusViewState extends State<VendorMenusView> {
                 const Text('No menu planned for today.'),
                 if (showAddAction) ...[
                   SizedBox(height: 12.h),
-                  FilledButton.icon(
-                    onPressed: _openAddMenu,
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text("Add Today's Menu"),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.gold,
+                      borderRadius: BorderRadius.circular(18.r),
+                    ),
+                    child: FilledButton.icon(
+                      onPressed: _openAddMenu,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text("Add Today's Menu"),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        disabledBackgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        elevation: 0,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18.r),
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ],

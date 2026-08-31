@@ -29,6 +29,7 @@ class _ProfileViewState extends State<ProfileView> {
   EmployeeModel? _employee;
   VendorModel? _vendor;
   bool _loading = true;
+  bool _isSigningOut = false;
   String? _error;
 
   @override
@@ -70,6 +71,9 @@ class _ProfileViewState extends State<ProfileView> {
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileProvider>().profile;
+    if (_isSigningOut) {
+      return const Scaffold(body: SizedBox.shrink());
+    }
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.background),
@@ -223,6 +227,7 @@ class _ProfileViewState extends State<ProfileView> {
       ),
     );
     if (!mounted || confirmed != true) return;
+    setState(() => _isSigningOut = true);
     try {
       await context.read<AuthProvider>().logout();
       if (!mounted) return;
@@ -232,6 +237,7 @@ class _ProfileViewState extends State<ProfileView> {
       Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
     } catch (error) {
       if (mounted) {
+        setState(() => _isSigningOut = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(

@@ -139,6 +139,84 @@ class VendorService {
     }
   }
 
+  static Future<double> loadRevenueForMonth(DateTime month) async {
+    final start = DateTime(month.year, month.month, 1);
+    final end = DateTime(month.year, month.month + 1, 0);
+
+    try {
+      final result = await _client.rpc(
+        'get_vendor_revenue_for_period',
+        params: {
+          'p_start_date': _dateOnly(start),
+          'p_end_date': _dateOnly(end),
+        },
+      );
+
+      if (result is num) {
+        return result.toDouble();
+      }
+      if (result is Map) {
+        final value = result['total'] ?? result['revenue'];
+        if (value is num) return value.toDouble();
+      }
+      return 0;
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[Vendor Revenue] MONTH ERROR: $error');
+      }
+      rethrow;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> loadDailyRevenueForMonth(
+    DateTime month,
+  ) async {
+    final start = DateTime(month.year, month.month, 1);
+    final end = DateTime(month.year, month.month + 1, 0);
+
+    try {
+      final result = await _client.rpc(
+        'get_vendor_daily_revenue_for_period',
+        params: {
+          'p_start_date': _dateOnly(start),
+          'p_end_date': _dateOnly(end),
+        },
+      );
+
+      final rows = result is List ? result : <dynamic>[result];
+      return rows
+          .whereType<Map>()
+          .map((row) => Map<String, dynamic>.from(row))
+          .map(
+            (row) => {
+              'date': row['meal_date'],
+              'total': (row['total'] as num?)?.toDouble() ?? 0,
+            },
+          )
+          .toList();
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[Vendor Revenue] DAILY ERROR: $error');
+      }
+      rethrow;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> loadRevenueHistory({
+    int months = 6,
+  }) async {
+    final now = DateTime.now();
+    final summary = <Map<String, dynamic>>[];
+
+    for (var offset = 0; offset < months; offset++) {
+      final month = DateTime(now.year, now.month - offset, 1);
+      final total = await loadRevenueForMonth(month);
+      summary.add({'month': month, 'total': total});
+    }
+
+    return summary;
+  }
+
   static Map<String, dynamic> _withEmployeeIdentity(dynamic row) {
     final meal = Map<String, dynamic>.from(row as Map);
     final employee = meal.remove('employees');

@@ -48,6 +48,8 @@ class _GuestMealViewState extends State<GuestMealView> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<EmployeeProvider>();
+    final guestMealError = provider.guestMealError;
+    final shouldHidePermissionError = _shouldHideGuestMealError(guestMealError);
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(gradient: AppGradients.background),
@@ -85,12 +87,13 @@ class _GuestMealViewState extends State<GuestMealView> {
                           height: 360,
                           child: DataSkeleton(count: 3),
                         ),
-                      if (provider.guestMealError != null)
+                      if (!shouldHidePermissionError && guestMealError != null)
                         AppErrorView(
-                          message: provider.guestMealError!,
+                          message: guestMealError,
                           onRetry: provider.refreshGuestMeals,
                         ),
                       if (!provider.isLoadingGuestMeals &&
+                          !shouldHidePermissionError &&
                           provider.guestMealError == null &&
                           provider.guestMeals.isEmpty)
                         _message(
@@ -106,6 +109,13 @@ class _GuestMealViewState extends State<GuestMealView> {
         ),
       ),
     );
+  }
+
+  bool _shouldHideGuestMealError(String? error) {
+    if (error == null) return false;
+    final lower = error.toLowerCase();
+    return lower.contains('permission') ||
+        lower.contains('you do not have permission');
   }
 
   Widget _gradientButton({

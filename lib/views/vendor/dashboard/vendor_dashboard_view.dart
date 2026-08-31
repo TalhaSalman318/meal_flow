@@ -293,6 +293,15 @@ class _StatisticsGrid extends StatelessWidget {
                 ? '--'
                 : 'Rs. ${provider.todaysRevenue.toStringAsFixed(0)}',
           ),
+          (
+            Icons.calendar_month_rounded,
+            'Monthly Revenue',
+            provider.isLoadingMonthlyRevenue
+                ? '--'
+                : provider.monthlyRevenueError != null
+                ? 'Rs. 0'
+                : 'Rs. ${provider.monthlyRevenue.toStringAsFixed(0)}',
+          ),
         ];
 
         return Wrap(
@@ -300,12 +309,26 @@ class _StatisticsGrid extends StatelessWidget {
           runSpacing: gap,
           children: [
             for (final card in cards)
-              _StatCard(
-                width: width,
-                icon: card.$1,
-                label: card.$2,
-                value: card.$3,
-              ),
+              card.$2 == 'Monthly Revenue'
+                  ? InkWell(
+                      onTap: () => Navigator.pushNamed(
+                        context,
+                        AppRoutes.vendorEarnings,
+                      ),
+                      borderRadius: BorderRadius.circular(24.r),
+                      child: _StatCard(
+                        width: width,
+                        icon: card.$1,
+                        label: card.$2,
+                        value: card.$3,
+                      ),
+                    )
+                  : _StatCard(
+                      width: width,
+                      icon: card.$1,
+                      label: card.$2,
+                      value: card.$3,
+                    ),
           ],
         );
       },

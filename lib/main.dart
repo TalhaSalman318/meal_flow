@@ -13,6 +13,7 @@ import 'package:canteen_app/views/employee/guest_meal/guest_meal_view.dart';
 import 'package:canteen_app/views/employee/menus/employee_menus_view.dart';
 import 'package:canteen_app/views/splash/splash_view.dart';
 import 'package:canteen_app/views/vendor/dashboard/vendor_dashboard_view.dart';
+import 'package:canteen_app/views/vendor/earnings/vendor_earnings_view.dart';
 import 'package:canteen_app/views/vendor/menus/add_menu_view.dart';
 import 'package:canteen_app/views/vendor/menus/menus_view.dart';
 import 'package:canteen_app/views/vendor/meals/vendor_meals_view.dart';
@@ -74,6 +75,7 @@ class MyApp extends StatelessWidget {
             AppRoutes.vendorDashboard: (context) => const VendorDashboardView(),
             AppRoutes.vendorMenus: (context) => const VendorMenusView(),
             AppRoutes.vendorMeals: (context) => const VendorMealsView(),
+            AppRoutes.vendorEarnings: (context) => const VendorEarningsView(),
             AppRoutes.addMenu: (context) => const AddMenuView(),
             AppRoutes.profile: (context) => const ProfileView(),
             AppRoutes.vendorProfile: (context) => const ProfileView(),

@@ -26,6 +26,10 @@ class VendorHomeProvider extends ChangeNotifier {
   bool _isLoadingGuestMeals = false;
   String? _guestMealError;
   int? _activeEmployeeCount;
+  bool _isLoadingMonthlyRevenue = false;
+  double _monthlyRevenue = 0;
+  String? _monthlyRevenueError;
+  List<Map<String, dynamic>> _monthlyRevenueHistory = const [];
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -49,6 +53,11 @@ class VendorHomeProvider extends ChangeNotifier {
   bool get isLoadingGuestMeals => _isLoadingGuestMeals;
   String? get guestMealError => _guestMealError;
   int? get activeEmployeeCount => _activeEmployeeCount;
+  bool get isLoadingMonthlyRevenue => _isLoadingMonthlyRevenue;
+  double get monthlyRevenue => _monthlyRevenue;
+  String? get monthlyRevenueError => _monthlyRevenueError;
+  List<Map<String, dynamic>> get monthlyRevenueHistory =>
+      List.unmodifiable(_monthlyRevenueHistory);
   double get todaysRevenue =>
       _todaysMeals.fold<double>(0, (total, meal) => total + meal.rate) +
       _todaysGuestMeals.fold<double>(0, (total, meal) => total + meal.amount);
@@ -103,6 +112,7 @@ class VendorHomeProvider extends ChangeNotifier {
             loadTodaysMeals(),
             loadTodaysGuestMeals(),
             _loadActiveEmployeeCount(),
+            loadMonthlyRevenue(),
           ]);
           _isLoading = false;
           notifyListeners();
@@ -246,6 +256,38 @@ class VendorHomeProvider extends ChangeNotifier {
 
   Future<void> refreshTodaysGuestMeals() => loadTodaysGuestMeals();
 
+  Future<void> loadMonthlyRevenue() async {
+    if (_isLoadingMonthlyRevenue) return;
+    _isLoadingMonthlyRevenue = true;
+    _monthlyRevenueError = null;
+    notifyListeners();
+
+    try {
+      _monthlyRevenue = await VendorService.loadRevenueForMonth(DateTime.now());
+      _monthlyRevenueHistory = await VendorService.loadRevenueHistory(
+        months: 6,
+      );
+    } catch (error) {
+      _monthlyRevenue = 0;
+      _monthlyRevenueError = AppError.message(
+        error,
+        fallback: 'Unable to load monthly revenue.',
+      );
+      if (kDebugMode) {
+        debugPrint('[Vendor Revenue] ERROR: $error');
+      }
+    } finally {
+      _isLoadingMonthlyRevenue = false;
+      notifyListeners();
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> loadMonthlyRevenueBreakdown(
+    DateTime month,
+  ) async {
+    return VendorService.loadDailyRevenueForMonth(month);
+  }
+
   String _serveError(Object error) {
     final message = error is PostgrestException ? error.message : '$error';
     final lower = message.toLowerCase();
@@ -268,6 +310,9 @@ class VendorHomeProvider extends ChangeNotifier {
     _todaysGuestMeals = [];
     _guestMealError = null;
     _activeEmployeeCount = null;
+    _monthlyRevenue = 0;
+    _monthlyRevenueError = null;
+    _monthlyRevenueHistory = const [];
     _errorMessage = null;
     notifyListeners();
   }
